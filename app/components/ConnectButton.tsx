@@ -3,13 +3,22 @@ import { usePrivyStatus } from "./auth/privy-status";
 
 const ConnectedPrivyButton = lazy(() => import("./auth/ConnectedPrivyButton"));
 
+export function ConnectLabel() {
+  return (
+    <>
+      <span className="trade-connect-full">Connect wallet</span>
+      <span className="trade-connect-short">Connect</span>
+    </>
+  );
+}
+
 export function ConnectButton() {
   const status = usePrivyStatus();
 
   if (status !== "ready") {
     return (
       <button type="button" className="trade-connect-btn" disabled>
-        {status === "loading" ? "Loading…" : "Connect wallet"}
+        {status === "loading" ? "Loading…" : <ConnectLabel />}
       </button>
     );
   }

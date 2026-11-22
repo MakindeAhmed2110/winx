@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { robinhoodTestnet } from "../../lib/config";
 import { dismissPrivyModals } from "../../lib/dismiss-privy";
+import { ConnectLabel } from "../ConnectButton";
 import { ConnectModal } from "./ConnectModal";
 
 function clearPrivyLocalState() {
@@ -76,7 +77,7 @@ export default function ConnectedPrivyButton() {
     return (
       <>
         <button type="button" className="trade-connect-btn" onClick={() => setOpen(true)}>
-          Connect wallet
+          <ConnectLabel />
         </button>
         <ConnectModal open={open} onClose={closeModal} />
       </>
