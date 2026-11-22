@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { FaqSection } from "./FaqSection";
 import { FeatureStrip } from "./FeatureStrip";
+import { SiteFooter } from "./SiteFooter";
 import {
   MarketVisual,
   OrderbookVisual,
@@ -78,7 +79,7 @@ export function LandingPage() {
       <FeatureStrip />
 
       {/* Private orderbook */}
-      <section className="relative z-10 mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-24">
+      <section id="orderbook" className="relative z-10 mx-auto max-w-5xl scroll-mt-8 px-5 py-16 md:px-8 md:py-24">
         <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">
           <div>
             <p className="eyebrow">Private orderbook</p>
@@ -114,7 +115,7 @@ export function LandingPage() {
       </section>
 
       {/* Private settlement */}
-      <section className="relative z-10 mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-24">
+      <section id="settlement" className="relative z-10 mx-auto max-w-5xl scroll-mt-8 px-5 py-16 md:px-8 md:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">Private settlement</p>
           <h2 className="mt-5 text-3xl font-medium tracking-[-0.03em] md:text-4xl">
@@ -132,18 +133,7 @@ export function LandingPage() {
 
       <FaqSection />
 
-      <footer className="relative z-10 border-t border-white/8 px-5 py-10 md:px-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo/inverse-logomark.svg" alt="" className="h-6 w-auto opacity-80" />
-            <span className="brand text-xs tracking-[0.16em] text-fog">Winx</span>
-          </div>
-          <p className="text-sm text-fog">
-            Privacy-native perpetual DEX on Robinhood Chain.
-          </p>
-          <p className="text-xs text-fog/60">Testnet · v1</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

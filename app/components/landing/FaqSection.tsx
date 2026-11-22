@@ -31,7 +31,7 @@ export function FaqSection() {
   const [open, setOpen] = useState(0);
 
   return (
-    <section className="faq-section relative z-10 w-full">
+    <section id="faq" className="faq-section relative z-10 w-full scroll-mt-8">
       <div className="faq-inner mx-auto grid w-full max-w-6xl gap-10 px-5 py-16 md:grid-cols-[minmax(0,0.32fr)_minmax(0,1fr)] md:gap-16 md:px-8 md:py-24">
         <h2 className="faq-title">FAQ</h2>
 

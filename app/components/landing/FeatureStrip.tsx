@@ -28,7 +28,7 @@ function FeatureCard({ title, src }: { title: string; src: string }) {
 
 export function FeatureStrip() {
   return (
-    <section className="feature-strip relative z-10 w-full py-20 md:py-28">
+    <section id="how" className="feature-strip relative z-10 w-full scroll-mt-8 py-20 md:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 md:px-6">
         <h2 className="feature-strip-title">
           <span className="block text-paper">Positions were public.</span>

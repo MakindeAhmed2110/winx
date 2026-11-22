@@ -833,6 +833,149 @@ h3 {
   }
 }
 
+/* Landing footer — black plate, nav columns, cropped wordmark */
+.site-footer {
+  position: relative;
+  z-index: 10;
+  overflow: hidden;
+  background: #000;
+  color: #f4f4f8;
+}
+
+.site-footer-top {
+  display: flex;
+  flex-direction: column;
+  gap: 2.75rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 3.25rem 1.5rem 0;
+}
+
+.site-footer-brand {
+  max-width: 280px;
+}
+
+.site-footer-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #f4f4f8;
+  text-decoration: none;
+}
+
+.site-footer-logo img {
+  height: 28px;
+  width: auto;
+}
+
+.site-footer-logo span {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-footer-brand p {
+  margin: 1rem 0 0;
+  color: rgba(244, 244, 248, 0.72);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.site-footer-socials {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
+}
+
+.site-footer-socials a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: #f4f4f8;
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: #000;
+}
+
+.site-footer-socials a:hover {
+  background: #141414;
+}
+
+.site-footer-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.75rem 1.25rem;
+}
+
+.site-footer-label {
+  margin: 0 0 0.95rem;
+  color: rgba(244, 244, 248, 0.46);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.site-footer-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-nav li + li {
+  margin-top: 0.85rem;
+}
+
+.site-footer-nav a {
+  color: #f4f4f8;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.site-footer-nav a:hover {
+  color: #fff;
+}
+
+.site-footer-mark {
+  margin: 1.5rem 0 0;
+  padding: 0 0.5rem;
+  color: #1a1a1a;
+  font-family: var(--font-display);
+  font-size: clamp(7.5rem, 27vw, 20rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.78;
+  text-align: center;
+  text-transform: uppercase;
+  user-select: none;
+  transform: translateY(12%);
+}
+
+@media (min-width: 860px) {
+  .site-footer-top {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 4rem;
+    padding: 4.25rem 2.5rem 0;
+  }
+
+  .site-footer-nav {
+    flex: 1;
+    max-width: 640px;
+    gap: 2rem;
+    padding-top: 0.35rem;
+  }
+}
+
 /* ── Trade desk (Figma WINX Perp dashboard) ── */
 .trade-desk {
   --trade-line: rgba(255, 255, 255, 0.08);
