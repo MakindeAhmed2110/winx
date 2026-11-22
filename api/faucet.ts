@@ -4,10 +4,6 @@ import { handleFaucetRequest } from "../server/faucet-middleware";
 /** Claim sends two transactions and waits for both receipts. */
 export const maxDuration = 60;
 
-export const config = {
-  maxDuration: 60,
-};
-
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   return handleFaucetRequest(req, res);
 }
