@@ -26,6 +26,12 @@ function addressFromUrl(url: string | undefined) {
   return new URLSearchParams(q).get("address") || "";
 }
 
+function addressField(raw: unknown): string {
+  if (!raw || typeof raw !== "object" || !("address" in raw)) return "";
+  const address = (raw as { address?: unknown }).address;
+  return typeof address === "string" ? address : "";
+}
+
 export async function handleFaucetRequest(req: IncomingMessage, res: ServerResponse) {
   const method = (req.method || "GET").toUpperCase();
   if (method === "OPTIONS") {
@@ -45,7 +51,7 @@ export async function handleFaucetRequest(req: IncomingMessage, res: ServerRespo
       });
       return;
     }
-    json(res, 200, faucetStatus(address));
+    json(res, 200, await faucetStatus(address, loadFaucetPrivateKey()));
     return;
   }
 
@@ -54,14 +60,25 @@ export async function handleFaucetRequest(req: IncomingMessage, res: ServerRespo
     return;
   }
 
-  let address = "";
-  try {
-    const parsed = JSON.parse((await readBody(req)) || "{}") as { address?: string };
-    address = parsed.address || "";
-  } catch {
-    json(res, 400, { error: "Invalid JSON" });
-    return;
+  const preset = (req as IncomingMessage & { body?: unknown }).body;
+  let payload: unknown = preset;
+  if (preset == null) {
+    try {
+      const raw = await readBody(req);
+      payload = raw.trim() ? JSON.parse(raw) : {};
+    } catch {
+      json(res, 400, { error: "Invalid JSON" });
+      return;
+    }
+  } else if (typeof preset === "string") {
+    try {
+      payload = preset.trim() ? JSON.parse(preset) : {};
+    } catch {
+      json(res, 400, { error: "Invalid JSON" });
+      return;
+    }
   }
+  const address = addressField(payload);
 
   if (!isAddress(address)) {
     json(res, 400, { error: "Connect a wallet first" });

@@ -40,7 +40,9 @@ const MAINNET_RPC =
 const CHAINLINK_MAX_AGE_S = 120n;
 
 function mainnetRpcUrl(): string {
-  if (typeof window !== "undefined" && import.meta.env.DEV) {
+  // Same-origin proxy. Vite rewrites it in dev; vercel.json rewrites it in production.
+  // A direct browser call to the mainnet RPC is blocked by CORS.
+  if (typeof window !== "undefined") {
     return `${window.location.origin}/rh-mainnet`;
   }
   return MAINNET_RPC;

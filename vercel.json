@@ -1,0 +1,27 @@
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "build/client",
+  "functions": {
+    "api/faucet.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/extended/:path*",
+      "destination": "https://api.starknet.extended.exchange/:path*"
+    },
+    {
+      "source": "/rh-mainnet",
+      "destination": "https://rpc.mainnet.chain.robinhood.com"
+    },
+    {
+      "source": "/rh-mainnet/:path*",
+      "destination": "https://rpc.mainnet.chain.robinhood.com/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
