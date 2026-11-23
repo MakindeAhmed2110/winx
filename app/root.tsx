@@ -44,7 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta property="og:url" content="https://winx.trading/" />
         <meta
           property="og:title"
-          content="Winx Perp — privacy-native perps on Robinhood Chain"
+          content="Winx - Private Perpetual Dex"
         />
         <meta
           property="og:description"
@@ -62,7 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="twitter:site" content="@winxperp" />
         <meta
           name="twitter:title"
-          content="Winx Perp — privacy-native perps on Robinhood Chain"
+          content="Winx - Private Perpetual Dex"
         />
         <meta
           name="twitter:description"

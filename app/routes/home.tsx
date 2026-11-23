@@ -3,7 +3,7 @@ import { LandingPage } from "../components/landing/LandingPage";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Winx Perp - privacy-native perps on Robinhood Chain" },
+    { title: "Winx - Private Perpetual Dex" },
     {
       name: "description",
       content:
