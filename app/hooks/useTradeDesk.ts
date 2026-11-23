@@ -45,6 +45,11 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function isUserRejected(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /user rejected|user denied|rejected the request|denied transaction/i.test(msg);
+}
+
 /** Live note already shielding this margin, so a failed open can be retried without shielding again. */
 async function findLiveMarginNote(
   publicClient: PublicClient,
@@ -729,15 +734,6 @@ export function useTradeDesk() {
     try {
       await refreshSettlementMark(market.id);
 
-      const fresh = await publicClient.readContract({
-        address: addresses.oracle,
-        abi: oracleAbi,
-        functionName: "getPrice",
-        args: [feedId(feed)],
-      });
-      const openMark = oraclePrice(fresh);
-      if (openMark == null || openMark <= 0n) throw new Error("Mark price unavailable");
-
       const noteAmount = parseUnits(sizeUsd || "0", 6);
       if (noteAmount <= 0n) throw new Error("Enter a size greater than 0");
 
@@ -746,15 +742,6 @@ export function useTradeDesk() {
 
       const lev = BigInt(Math.min(leverage, market.maxLeverage));
       const size = noteAmount * lev;
-
-      const marketRow = await publicClient.readContract({
-        address: addresses.engine,
-        abi: engineAbi,
-        functionName: "markets",
-        args: [market.id],
-      });
-      const risk = marketRisk(marketRow);
-      const impactBps = impactBpsFromSkew(risk.longOi, risk.shortOi, risk.impactFactorBps);
 
       if (reusable) {
         openCommitment = reusable.commitment;
@@ -844,59 +831,136 @@ export function useTradeDesk() {
       refreshLocal();
       await refetchUsdw();
 
-      const [root, openedBlock] = await Promise.all([
-        publicClient.readContract({
-          address: addresses.vault,
-          abi: vaultAbi,
-          functionName: "currentRoot",
-        }),
-        publicClient.getBlock(),
-      ]);
-      const openedAt = openedBlock.timestamp;
+      // open() reverts PriceMismatch unless the proof's mark equals the oracle
+      // in the inclusion block. The feed keeps moving during shield and vault
+      // sync, so the price has to be read after that work — immediately before
+      // the proof — and the proof discarded if the feed moves again.
+      const openAttempts = 4;
+      let opened: {
+        proved: Awaited<ReturnType<typeof proveOpen>>;
+        hash: `0x${string}`;
+      } | null = null;
+      let lastOpenErr: unknown;
+      const step = reusable ? "3/3" : "4/4";
 
-      const proved = await proveOpen({
-        engine: addresses.engine,
-        ownerAddress: address,
-        noteAmount,
-        noteBlinding: BigInt(syncedNote.blinding),
-        leafIndex: idx,
-        leaves: leaves.map((c) => BigInt(c)),
-        merkleRoot: root,
-        size,
-        isLong,
-        leverage: lev,
-        markPrice: openMark,
-        maxLeverage: BigInt(market.maxLeverage),
-        marketId: market.id,
-        openedAt,
-        fundingIndex: absIndex(risk.fundingIndexLong),
-        impactBps,
-      });
+      for (let attempt = 1; attempt <= openAttempts; attempt++) {
+        const [fresh, marketRow, root, openedBlock] = await Promise.all([
+          publicClient.readContract({
+            address: addresses.oracle,
+            abi: oracleAbi,
+            functionName: "getPrice",
+            args: [feedId(feed)],
+          }),
+          publicClient.readContract({
+            address: addresses.engine,
+            abi: engineAbi,
+            functionName: "markets",
+            args: [market.id],
+          }),
+          publicClient.readContract({
+            address: addresses.vault,
+            abi: vaultAbi,
+            functionName: "currentRoot",
+          }),
+          publicClient.getBlock(),
+        ]);
+        const openMark = oraclePrice(fresh);
+        if (openMark == null || openMark <= 0n) throw new Error("Mark price unavailable");
+        const risk = marketRisk(marketRow);
+        const impactBps = impactBpsFromSkew(risk.longOi, risk.shortOi, risk.impactFactorBps);
+        const fundingIndex = absIndex(risk.fundingIndexLong);
+        const openedAt = openedBlock.timestamp;
 
-      setStatus({
-        kind: "work",
-        text: `${reusable ? "3/3" : "4/4"} Submitting open (${proved.proveMs} ms prove)…`,
-      });
-      const hash = await writeContractAsync({
-        address: addresses.engine,
-        abi: engineAbi,
-        functionName: "open",
-        args: [
-          proved.proof,
-          {
-            merkleRoot: proved.merkleRoot,
-            noteNullifier: proved.noteNullifier,
-            positionCommitment: proved.positionCommitment,
-            changeNoteCommitment: proved.changeNoteCommitment,
-            markPrice: proved.markPrice,
-            openedAt: proved.openedAt,
-            marketId: proved.marketId,
-            collateralId: 1,
-          },
-        ],
-      });
-      const openReceipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (openReceipt.status === "reverted") throw new Error("Open transaction reverted");
+        setStatus({
+          kind: "work",
+          text: `${step} Proving open at the live mark (attempt ${attempt}/${openAttempts})…`,
+        });
+        const proved = await proveOpen({
+          engine: addresses.engine,
+          ownerAddress: address,
+          noteAmount,
+          noteBlinding: BigInt(syncedNote.blinding),
+          leafIndex: idx,
+          leaves: leaves.map((c) => BigInt(c)),
+          merkleRoot: root,
+          size,
+          isLong,
+          leverage: lev,
+          markPrice: openMark,
+          maxLeverage: BigInt(market.maxLeverage),
+          marketId: market.id,
+          openedAt,
+          fundingIndex,
+          impactBps,
+        });
+
+        const [freshAgain, marketAgain, blockAgain] = await Promise.all([
+          publicClient.readContract({
+            address: addresses.oracle,
+            abi: oracleAbi,
+            functionName: "getPrice",
+            args: [feedId(feed)],
+          }),
+          publicClient.readContract({
+            address: addresses.engine,
+            abi: engineAbi,
+            functionName: "markets",
+            args: [market.id],
+          }),
+          publicClient.getBlock(),
+        ]);
+        const markNow = oraclePrice(freshAgain);
+        const riskNow = marketRisk(marketAgain);
+        const impactNow = impactBpsFromSkew(riskNow.longOi, riskNow.shortOi, riskNow.impactFactorBps);
+        const fundingNow = absIndex(riskNow.fundingIndexLong);
+        const proveAge = blockAgain.timestamp - openedAt;
+        if (markNow !== openMark || impactNow !== impactBps || fundingNow !== fundingIndex || proveAge > 60n) {
+          lastOpenErr = new Error("Settlement mark moved during the proof");
+          continue;
+        }
+
+        setStatus({
+          kind: "work",
+          text: `${step} Submitting open (${proved.proveMs} ms prove)…`,
+        });
+        try {
+          const hash = await writeContractAsync({
+            address: addresses.engine,
+            abi: engineAbi,
+            functionName: "open",
+            args: [
+              proved.proof,
+              {
+                merkleRoot: proved.merkleRoot,
+                noteNullifier: proved.noteNullifier,
+                positionCommitment: proved.positionCommitment,
+                changeNoteCommitment: proved.changeNoteCommitment,
+                markPrice: proved.markPrice,
+                openedAt: proved.openedAt,
+                marketId: proved.marketId,
+                collateralId: 1,
+              },
+            ],
+          });
+          const openReceipt = await publicClient.waitForTransactionReceipt({ hash });
+          if (openReceipt.status === "reverted") {
+            lastOpenErr = new Error("Open transaction reverted");
+            continue;
+          }
+          opened = { proved, hash };
+          break;
+        } catch (e) {
+          if (isUserRejected(e)) throw e;
+          lastOpenErr = e;
+        }
+      }
+
+      if (!opened) {
+        throw lastOpenErr instanceof Error
+          ? lastOpenErr
+          : new Error("Settlement mark changed before the open was included");
+      }
+      const { proved, hash } = opened;
 
       markNoteSpent(openCommitment, "trade");
       if (proved.changeAmount > 0n) {
@@ -925,7 +989,7 @@ export function useTradeDesk() {
         leverage: Number(lev),
         size: size.toString(),
         margin: noteAmount.toString(),
-        entryPrice: openMark.toString(),
+        entryPrice: proved.markPrice.toString(),
         posBlinding: proved.posBlinding.toString(),
         openedAt: proved.openedAt.toString(),
         fundingIndexEntry: proved.fundingIndex.toString(),
@@ -940,7 +1004,7 @@ export function useTradeDesk() {
           isLong,
           leverage: Number(lev),
           size: size.toString(),
-          entryPrice: openMark.toString(),
+          entryPrice: proved.markPrice.toString(),
           posBlinding: proved.posBlinding.toString(),
           openedAt: proved.openedAt.toString(),
           owner: addressToOwner(address).toString(),
@@ -963,7 +1027,7 @@ export function useTradeDesk() {
         leverage: Number(lev),
         margin: noteAmount.toString(),
         size: size.toString(),
-        entryPrice: openMark.toString(),
+        entryPrice: proved.markPrice.toString(),
       });
       setBottomTab("positions");
     } catch (e) {
