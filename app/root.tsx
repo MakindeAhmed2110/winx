@@ -39,6 +39,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Winx" />
+        <meta property="og:url" content="https://winx.trading/" />
+        <meta
+          property="og:title"
+          content="Winx Perp — privacy-native perps on Robinhood Chain"
+        />
+        <meta
+          property="og:description"
+          content="Hide your positions from the public. Private orderbook, private market, private settlement on Robinhood Chain."
+        />
+        <meta property="og:image" content="https://winx.trading/og_preview_image.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="3008" />
+        <meta property="og:image:height" content="1560" />
+        <meta
+          property="og:image:alt"
+          content="Winx landing page: hide your positions from the public."
+        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@winxperp" />
+        <meta
+          name="twitter:title"
+          content="Winx Perp — privacy-native perps on Robinhood Chain"
+        />
+        <meta
+          name="twitter:description"
+          content="Hide your positions from the public. Private orderbook, private market, private settlement on Robinhood Chain."
+        />
+        <meta name="twitter:image" content="https://winx.trading/og_preview_image.png" />
         <Meta />
         <Links />
       </head>
