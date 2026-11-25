@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   useAccount,
@@ -8,7 +8,19 @@ import {
   useWalletClient,
   useWriteContract,
 } from "wagmi";
-import { formatEther, formatUnits, parseUnits, pad, type PublicClient } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  encodeFunctionData,
+  http,
+  formatEther,
+  formatUnits,
+  maxUint256,
+  parseUnits,
+  pad,
+  type PublicClient,
+} from "viem";
 import { erc20Abi, engineAbi, oracleAbi, vaultAbi } from "../lib/abis";
 import { addresses, explorerTx, markets, robinhoodTestnet } from "../lib/config";
 import { formatUsdw } from "../lib/format";
@@ -28,6 +40,8 @@ import {
   type LocalNote,
   type LocalPosition,
 } from "../lib/privacy/notes";
+import { backupExternalFor, isDirectWallet } from "../lib/operating-wallet";
+import { BackupSignatureDenied, syncPrivateBackup, type BackupSyncResult } from "../lib/privacy/backup";
 import { addressToOwner, createHasher, toHex32 } from "../lib/privacy/commitments";
 import {
   absIndex,
@@ -38,16 +52,89 @@ import {
   proveUnshield,
 } from "../lib/privacy/prove";
 import { appendLeafAfterInsert, resyncVaultLeaves } from "../lib/privacy/vaultSync";
-import { requestKeeperMarkSync, syncAggregatorMarks } from "../lib/syncMarks";
+import { requestKeeperMarkSync, settlementUpdatedAt, syncAggregatorMarks } from "../lib/syncMarks";
+import { sendTimedClose } from "../lib/timed-tx";
 import type { TradeSuccess } from "../components/trade/TradeSuccessModal";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function isUserRejected(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : String(e);
-  return /user rejected|user denied|rejected the request|denied transaction/i.test(msg);
+/** Proof `closedAt` must equal the inclusion block's timestamp, exactly. */
+const CLOSE_LEAD_S = 8n;
+/** Seconds that must remain after the proof so the server can still hit that second. */
+const CLOSE_SLACK_S = 4n;
+const CLOSE_GAS = 1_600_000n;
+
+type HeadSample = { ts: bigint; recv: number; rtt: number };
+
+function freshHeadClient(): PublicClient {
+  return createPublicClient({
+    chain: robinhoodTestnet,
+    transport: http(robinhoodTestnet.rpcUrls.default.http[0], {
+      batch: false,
+      timeout: 4_000,
+    }),
+    cacheTime: 0,
+  }) as PublicClient;
+}
+
+/** Uncached head sampler. Wagmi's client caches `latest` for several seconds, which skips the close second. */
+function startCloseClock() {
+  const client = freshHeadClient();
+  let stopped = false;
+  let latest: HeadSample | null = null;
+  let step: { chainTs: bigint; secondStartMs: number } | null = null;
+  let prev: HeadSample | null = null;
+
+  void (async () => {
+    while (!stopped) {
+      const sent = Date.now();
+      try {
+        const block = await client.getBlock({ blockTag: "latest" });
+        if (stopped) return;
+        const recv = Date.now();
+        const sample: HeadSample = {
+          ts: block.timestamp,
+          recv,
+          rtt: Math.max(1, recv - sent),
+        };
+        if (prev && sample.ts === prev.ts + 1n) {
+          const oneWay = Math.min(prev.rtt, sample.rtt) / 2;
+          step = { chainTs: sample.ts, secondStartMs: recv - oneWay };
+        }
+        prev = sample;
+        latest = sample;
+        await sleep(80);
+      } catch {
+        if (!stopped) await sleep(100);
+      }
+    }
+  })();
+
+  return {
+    client,
+    stop() {
+      stopped = true;
+    },
+    latest() {
+      return latest;
+    },
+    async head(): Promise<HeadSample> {
+      const waitUntil = Date.now() + 4_000;
+      while (Date.now() < waitUntil) {
+        if (latest && Date.now() - latest.recv < 1_500) return latest;
+        await sleep(40);
+      }
+      if (latest) return latest;
+      throw new Error("Could not read the chain clock");
+    },
+    /** Local ms when `target` begins, from the last observed second boundary. */
+    startOf(target: bigint): number | null {
+      if (!step) return null;
+      return step.secondStartMs + Number(target - step.chainTs) * 1000;
+    },
+  };
 }
 
 /** Live note already shielding this margin, so a failed open can be retried without shielding again. */
@@ -119,7 +206,7 @@ export function useTradeDesk() {
   const { writeContractAsync } = useWriteContract();
 
   const [privyAddress, setPrivyAddress] = useState<`0x${string}` | undefined>();
-  const address = wagmiAddress ?? privyAddress;
+  const address = privyAddress ?? (isDirectWallet(wagmiAddress) ? wagmiAddress : undefined);
 
   const [searchParams] = useSearchParams();
   const marketParam = searchParams.get("market");
@@ -169,6 +256,25 @@ export function useTradeDesk() {
       setBottomTab("notes");
     }
   }, [refreshLocal]);
+
+  useEffect(() => {
+    if (!address) return;
+    for (const pos of loadStore().positions) {
+      void handoffPosition({
+        commitment: pos.commitment,
+        marketId: pos.marketId,
+        isLong: pos.isLong,
+        leverage: pos.leverage,
+        size: pos.size,
+        entryPrice: pos.entryPrice,
+        posBlinding: pos.posBlinding,
+        openedAt: pos.openedAt,
+        owner: addressToOwner(address).toString(),
+        fundingIndexEntry: pos.fundingIndexEntry ?? "0",
+        collateralId: 1,
+      }).catch(() => {});
+    }
+  }, [address]);
 
   /** Drop ghost positions and confirm pending notes against the vault. */
   useEffect(() => {
@@ -335,15 +441,67 @@ export function useTradeDesk() {
       return false;
     }
     if (!(await ensureNetwork())) return false;
-    if (!walletClient && !isConnected) {
-      setStatus({
-        kind: "err",
-        text: "Wallet can’t sign yet. Disconnect and reconnect MetaMask, then retry.",
-      });
-      return false;
-    }
     return true;
   }, [address, publicClient, ensureNetwork, walletClient, isConnected]);
+
+  const signBackup = useCallback(
+    (message: string) => {
+      const signer = walletClient?.account?.address;
+      if (!walletClient || !address || !signer || signer.toLowerCase() !== address.toLowerCase()) {
+        return Promise.reject(new BackupSignatureDenied());
+      }
+      return walletClient.signMessage({ account: address, message });
+    },
+    [walletClient, address],
+  );
+
+  const pushBackup = useCallback(async (): Promise<BackupSyncResult | null> => {
+    const signer = walletClient?.account?.address;
+    if (!address || !walletClient || !publicClient || !signer || signer.toLowerCase() !== address.toLowerCase()) {
+      return null;
+    }
+    try {
+      const result = await syncPrivateBackup({
+        address,
+        publicClient,
+        signMessage: signBackup,
+        externalAddress: backupExternalFor(address),
+      });
+      if (result.restored) refreshLocal();
+      return result;
+    } catch (err) {
+      if (!(err instanceof BackupSignatureDenied)) {
+        console.warn("backup sync failed");
+      }
+      return null;
+    }
+  }, [address, walletClient, publicClient, signBackup, refreshLocal]);
+
+  const backupNote = (result: BackupSyncResult | null) =>
+    result ? "" : " Backup did not sync — stay on this browser.";
+
+  const autoBackup = useRef<string | null>(null);
+  useEffect(() => {
+    const signer = walletClient?.account?.address;
+    if (!address || !walletClient || !publicClient || !signer || signer.toLowerCase() !== address.toLowerCase()) {
+      return;
+    }
+    const id = address.toLowerCase();
+    if (autoBackup.current === id) return;
+    autoBackup.current = id;
+    let cancelled = false;
+    void pushBackup().then((result) => {
+      if (cancelled || !result?.restored) return;
+      setStatus((prev) =>
+        prev.text === "Ready." || prev.kind === "idle"
+          ? { kind: "ok", text: "Restored notes and positions from your backup." }
+          : prev,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, walletClient, publicClient, pushBackup]);
 
   const onWithdraw = useCallback(async (only?: LocalNote) => {
     if (!(await ensureSigner())) return;
@@ -353,13 +511,14 @@ export function useTradeDesk() {
         )
       : liveNotes();
     if (toWithdraw.length === 0) {
-      setStatus({ kind: "err", text: "No live shielded notes to withdraw." });
+      setStatus({ kind: "err", text: "No live shielded notes to unshield." });
       return;
     }
 
     try {
       const h = await createHasher();
       let withdrawn = 0n;
+      let lastHash: `0x${string}` | undefined;
       let i = 0;
 
       setStatus({ kind: "work", text: "Syncing vault leaves…" });
@@ -376,7 +535,7 @@ export function useTradeDesk() {
 
         setStatus({
           kind: "work",
-          text: `Withdraw ${i}/${toWithdraw.length}: checking nullifiers…`,
+          text: `Unshield ${i}/${toWithdraw.length}: checking nullifiers…`,
         });
 
         const vaultNull = toHex32(
@@ -408,7 +567,7 @@ export function useTradeDesk() {
         const leafIndex = syncedOnce.leaves.findIndex((c) => c.toLowerCase() === leafKey);
         if (leafIndex < 0) {
           throw new Error(
-            `Note ${note.commitment.slice(0, 10)}… not found in vault merkle tree — cannot withdraw`,
+            `Note ${note.commitment.slice(0, 10)}… not found in vault merkle tree — cannot unshield`,
           );
         }
 
@@ -420,7 +579,7 @@ export function useTradeDesk() {
 
         setStatus({
           kind: "work",
-          text: `Withdraw ${i}/${toWithdraw.length}: proving unshield…`,
+          text: `Unshield ${i}/${toWithdraw.length}: proving…`,
         });
         const proved = await proveUnshield({
           vault: addresses.vault,
@@ -435,7 +594,7 @@ export function useTradeDesk() {
 
         setStatus({
           kind: "work",
-          text: `Withdraw ${i}/${toWithdraw.length}: submitting (${proved.proveMs} ms)…`,
+          text: `Unshield ${i}/${toWithdraw.length}: submitting (${proved.proveMs} ms)…`,
         });
         const hash = await writeContractAsync({
           address: addresses.vault,
@@ -452,9 +611,11 @@ export function useTradeDesk() {
             },
           ],
         });
-        await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === "reverted") throw new Error("Unshield reverted.");
         markNoteSpent(note.commitment, "withdraw");
         withdrawn += proved.amount;
+        lastHash = hash;
 
         // Tree root changes after each unshield nullifier spend only — leaves stay;
         // refresh root for the next note by re-reading (no leaf rebuild needed).
@@ -462,16 +623,22 @@ export function useTradeDesk() {
 
       refreshLocal();
       await refetchUsdw();
+      const backed = await pushBackup();
 
-      if (withdrawn === 0n) {
+      if (withdrawn === 0n || !lastHash) {
         setStatus({
           kind: "ok",
-          text: "No withdrawable notes left (already spent on-chain).",
+          text: `No shielded notes left to unshield.${backupNote(backed)}`,
         });
       } else {
+        setSuccess({
+          kind: "unshield",
+          txHash: lastHash,
+          amount: withdrawn.toString(),
+        });
         setStatus({
           kind: "ok",
-          text: `Withdrew ${formatUsdw(formatUnits(withdrawn, 6))} USDW to wallet.`,
+          text: `Unshielded ${formatUsdw(formatUnits(withdrawn, 6))} USDW to your wallet.${backupNote(backed)}`,
         });
       }
       setBottomTab("balances");
@@ -479,7 +646,7 @@ export function useTradeDesk() {
       refreshLocal();
       setStatus({ kind: "err", text: e instanceof Error ? e.message : String(e) });
     }
-  }, [ensureSigner, writeContractAsync, refreshLocal, refetchUsdw, address, publicClient]);
+  }, [ensureSigner, writeContractAsync, refreshLocal, refetchUsdw, address, publicClient, pushBackup]);
 
   const onDownloadNotes = useCallback(() => {
     downloadNotesFile();
@@ -491,16 +658,22 @@ export function useTradeDesk() {
     setStatus({ kind: "ok", text: `Downloaded note ${note.commitment.slice(0, 10)}…` });
   }, []);
 
-  /** Push live Extended (or fresh Chainlink) into the testnet Aggregator. Must succeed. */
+  /** Push a live mark only when the on-chain print is already old. A fresh feed is used as-is. */
   const refreshSettlementMark = useCallback(
     async (marketId?: number) => {
+      if (!publicClient) throw new Error("RPC not ready — cannot refresh mark");
+      const feedAddr = marketId === 2 ? addresses.ethFeed : addresses.btcFeed;
+      const updatedAt = await settlementUpdatedAt(
+        (args) => publicClient.readContract(args),
+        feedAddr,
+      );
+      if (updatedAt != null) {
+        const block = await publicClient.getBlock();
+        if (block.timestamp - updatedAt < 30n) return;
+      }
       setStatus({ kind: "work", text: "Refreshing live settlement mark…" });
       const synced = await requestKeeperMarkSync();
-      if (synced) {
-        await sleep(1_500);
-        return;
-      }
-      if (!publicClient) throw new Error("RPC not ready — cannot refresh mark");
+      if (synced) return;
       await syncAggregatorMarks({
         marketId,
         writeContractAsync: (args) => writeContractAsync(args),
@@ -514,6 +687,7 @@ export function useTradeDesk() {
   const onClosePosition = useCallback(
     async (pos: LocalPosition) => {
       if (!(await ensureSigner()) || !address || !publicClient) return;
+      const clock = startCloseClock();
       try {
         const stillOpen = await publicClient.readContract({
           address: addresses.engine,
@@ -538,13 +712,13 @@ export function useTradeDesk() {
         const feed =
           pos.marketId === 1 ? feedId(addresses.btcFeed) : feedId(addresses.ethFeed);
 
-        let lastErr: unknown;
-        for (let attempt = 1; attempt <= 4; attempt++) {
-          setStatus({
-            kind: "work",
-            text: `Close attempt ${attempt}/4: reading live mark + market…`,
-          });
-          const [markTuple, marketRow, feeBps, block] = await Promise.all([
+        for (let attempt = 0; attempt < 3; attempt++) {
+        let proved: Awaited<ReturnType<typeof proveClose>> | null = null;
+        let closedAt = 0n;
+        try {
+        setStatus({ kind: "work", text: attempt === 0 ? "Proving close…" : "That second passed. Proving the close again…" });
+        for (let built = 0; built < 2 && !proved; built++) {
+          const [markTuple, marketRow, feeBps, head] = await Promise.all([
             publicClient.readContract({
               address: addresses.oracle,
               abi: oracleAbi,
@@ -562,29 +736,18 @@ export function useTradeDesk() {
               abi: engineAbi,
               functionName: "profitFeeBps",
             }),
-            publicClient.getBlock(),
+            clock.head(),
           ]);
 
           const exitPrice = oraclePrice(markTuple);
           if (exitPrice == null || exitPrice <= 0n) {
             throw new Error("Settlement mark unavailable after sync");
           }
-          if (exitPrice === BigInt(pos.entryPrice) && attempt === 1) {
-            setStatus({ kind: "work", text: "Mark still equals entry — pushing live feed again…" });
-            await refreshSettlementMark(pos.marketId);
-            continue;
-          }
 
           const risk = marketRisk(marketRow);
           const impactBps = impactBpsFromSkew(risk.longOi, risk.shortOi, risk.impactFactorBps);
-          // Engine packs block.timestamp as closedAt — proof must match inclusion exactly.
-          const closedAt = block.timestamp + 8n;
-
-          setStatus({
-            kind: "work",
-            text: `Close attempt ${attempt}/4: proving (target t=${closedAt})…`,
-          });
-          const proved = await proveClose({
+          closedAt = head.ts + CLOSE_LEAD_S;
+          const candidate = await proveClose({
             engine: addresses.engine,
             ownerAddress: address,
             size: BigInt(pos.size),
@@ -602,138 +765,170 @@ export function useTradeDesk() {
             borrowRate: risk.borrowRate,
             profitFeeBps: asBig(feeBps),
           });
+          const afterProve = clock.latest() ?? head;
+          if (closedAt - afterProve.ts >= CLOSE_SLACK_S) proved = candidate;
+        }
+        if (!proved) throw new Error("Close proof was too slow. Tap Close again.");
 
+        setStatus({ kind: "work", text: "Sending close…" });
+        const closeArgs = [
+          proved.proof,
+          {
+            positionCommitment: proved.positionCommitment,
+            positionNullifier: proved.positionNullifier,
+            payoutNoteCommitment: proved.payoutNoteCommitment,
+            exitPrice: proved.exitPrice,
+            protocolFee: proved.protocolFee,
+            marketId: proved.marketId,
+            collateralId: 1,
+          },
+        ] as const;
+        const closeData = encodeFunctionData({
+          abi: engineAbi,
+          functionName: "close",
+          args: closeArgs,
+        });
+
+        try {
+          const markNow = await clock.client.readContract({
+            address: addresses.oracle,
+            abi: oracleAbi,
+            functionName: "getPrice",
+            args: [feed],
+          });
+          const liveExit = oraclePrice(markNow);
+          if (liveExit != null && liveExit !== proved.exitPrice) {
+            throw new Error("Settlement mark moved. Tap Close again.");
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.startsWith("Settlement mark moved")) throw e;
+        }
+
+        if (proved.leftover > 0n) {
+          addNote({
+            commitment: proved.payoutNoteCommitment,
+            amount: proved.leftover.toString(),
+            blinding: proved.payoutBlinding.toString(),
+            owner: proved.owner.toString(),
+            leafIndex: 0,
+            spent: false,
+            pending: true,
+            createdAt: Date.now(),
+          });
+          refreshLocal();
+        }
+
+        const tick = setInterval(() => {
+          const start = clock.startOf(closedAt);
+          const left = start == null ? 0 : start - Date.now();
           setStatus({
             kind: "work",
-            text: `Close attempt ${attempt}/4: waiting for chain time ${closedAt}…`,
+            text: left > 1_500 ? `Sending in ${Math.ceil(left / 1000)}s…` : "Sending close…",
           });
-          let submitted = false;
-          for (let i = 0; i < 60; i++) {
-            const b = await publicClient.getBlock();
-            if (b.timestamp > closedAt) break;
-            if (b.timestamp === closedAt) {
-              setStatus({
-                kind: "work",
-                text: `Close attempt ${attempt}/4: submitting (${proved.proveMs} ms prove)…`,
-              });
-              try {
-                if (proved.leftover > 0n) {
-                  addNote({
-                    commitment: proved.payoutNoteCommitment,
-                    amount: proved.leftover.toString(),
-                    blinding: proved.payoutBlinding.toString(),
-                    owner: proved.owner.toString(),
-                    leafIndex: 0,
-                    spent: false,
-                    pending: true,
-                    createdAt: Date.now(),
-                  });
-                  refreshLocal();
-                }
-
-                const hash = await writeContractAsync({
-                  address: addresses.engine,
-                  abi: engineAbi,
-                  functionName: "close",
-                  args: [
-                    proved.proof,
-                    {
-                      positionCommitment: proved.positionCommitment,
-                      positionNullifier: proved.positionNullifier,
-                      payoutNoteCommitment: proved.payoutNoteCommitment,
-                      exitPrice: proved.exitPrice,
-                      protocolFee: proved.protocolFee,
-                      marketId: proved.marketId,
-                      collateralId: 1,
-                    },
-                  ],
-                });
-                const receipt = await publicClient.waitForTransactionReceipt({ hash });
-                if (receipt.status === "reverted") {
-                  throw new Error("Close transaction reverted");
-                }
-
-                if (proved.leftover > 0n) {
-                  try {
-                    await appendLeafAfterInsert(publicClient, proved.payoutNoteCommitment);
-                  } catch (syncErr) {
-                    console.warn("append payout leaf failed", syncErr);
-                  }
-                  confirmNote(proved.payoutNoteCommitment);
-                }
-
-                removePosition(pos.commitment);
-                refreshLocal();
-
-                setSuccess({
-                  kind: "close",
-                  txHash: hash,
-                  marketId: pos.marketId,
-                  isLong: pos.isLong,
-                  leverage: pos.leverage,
-                  margin: pos.margin,
-                  size: pos.size,
-                  entryPrice: pos.entryPrice,
-                  exitPrice: proved.exitPrice.toString(),
-                  leftover: proved.leftover.toString(),
-                  protocolFee: proved.protocolFee.toString(),
-                });
-                setStatus({
-                  kind: "ok",
-                  text:
-                    proved.leftover > 0n
-                      ? `Closed · Live payout ${formatUsdw(formatUnits(proved.leftover, 6))} USDW — Notes → Withdraw`
-                      : "Closed · no payout (loss/fees consumed equity)",
-                });
-                setBottomTab("notes");
-                return;
-              } catch (e) {
-                if (proved.leftover > 0n) {
-                  try {
-                    const liveOnVault = await publicClient.readContract({
-                      address: addresses.vault,
-                      abi: vaultAbi,
-                      functionName: "isLiveNote",
-                      args: [proved.payoutNoteCommitment],
-                    });
-                    if (liveOnVault) {
-                      confirmNote(proved.payoutNoteCommitment);
-                      try {
-                        await appendLeafAfterInsert(publicClient, proved.payoutNoteCommitment);
-                      } catch {
-                        // keep pending leaf index
-                      }
-                    } else {
-                      dropPendingNote(proved.payoutNoteCommitment);
-                    }
-                  } catch {
-                    // keep backup
-                  }
-                }
-                lastErr = e;
-                submitted = true;
-                break;
-              }
-            }
-            await sleep(500);
-          }
-          if (!submitted) lastErr = new Error("Missed close timestamp window — retrying");
+        }, 250);
+        let hash: `0x${string}`;
+        try {
+          hash = await sendTimedClose({ data: closeData, closedAt, gas: CLOSE_GAS });
+        } finally {
+          clearInterval(tick);
         }
-        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr ?? "Close failed"));
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === "reverted") {
+          if (proved.leftover > 0n) dropPendingNote(proved.payoutNoteCommitment);
+          throw new Error("Close missed the block. Tap Close again.");
+        }
+
+        if (proved.leftover > 0n) {
+          try {
+            await appendLeafAfterInsert(publicClient, proved.payoutNoteCommitment);
+          } catch (syncErr) {
+            console.warn("append payout leaf failed", syncErr);
+          }
+          confirmNote(proved.payoutNoteCommitment);
+        }
+
+        removePosition(pos.commitment);
+        refreshLocal();
+        const backed = await pushBackup();
+
+        setSuccess({
+          kind: "close",
+          txHash: hash,
+          marketId: pos.marketId,
+          isLong: pos.isLong,
+          leverage: pos.leverage,
+          margin: pos.margin,
+          size: pos.size,
+          entryPrice: pos.entryPrice,
+          exitPrice: proved.exitPrice.toString(),
+          leftover: proved.leftover.toString(),
+          protocolFee: proved.protocolFee.toString(),
+        });
+        setStatus({
+          kind: "ok",
+          text:
+            (proved.leftover > 0n
+              ? `Closed · Live payout ${formatUsdw(formatUnits(proved.leftover, 6))} USDW — Notes → Withdraw`
+              : "Closed · no payout (loss/fees consumed equity)") + backupNote(backed),
+        });
+        setBottomTab("notes");
+        return;
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          const permanent = /relayer is low|not configured|Only a close/i.test(message);
+          if (proved) {
+            const still = await publicClient
+              .readContract({
+                address: addresses.engine,
+                abi: engineAbi,
+                functionName: "positions",
+                args: [pos.commitment],
+              })
+              .catch(() => true);
+            if (!still) {
+              if (proved.leftover > 0n) {
+                try {
+                  await appendLeafAfterInsert(publicClient, proved.payoutNoteCommitment);
+                } catch (syncErr) {
+                  console.warn("append payout leaf failed", syncErr);
+                }
+                confirmNote(proved.payoutNoteCommitment);
+              }
+              removePosition(pos.commitment);
+              refreshLocal();
+              const backed = await pushBackup();
+              setStatus({
+                kind: "ok",
+                text:
+                  (proved.leftover > 0n
+                    ? `Closed · Live payout ${formatUsdw(formatUnits(proved.leftover, 6))} USDW — Notes → Withdraw`
+                    : "Closed · no payout (loss/fees consumed equity)") + backupNote(backed),
+              });
+              setBottomTab("notes");
+              return;
+            }
+          }
+          if (!permanent && attempt < 2) {
+            if (proved && proved.leftover > 0n) dropPendingNote(proved.payoutNoteCommitment);
+            continue;
+          }
+          throw e;
+        }
+        }
       } catch (e) {
         refreshLocal();
         setStatus({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+      } finally {
+        clock.stop();
       }
     },
-    [ensureSigner, address, publicClient, writeContractAsync, refreshLocal, refreshSettlementMark],
+    [ensureSigner, address, publicClient, refreshLocal, refreshSettlementMark, pushBackup],
   );
 
   const onOpen = useCallback(async () => {
     if (!(await ensureSigner()) || !address || !publicClient) return;
     let shieldConfirmed = false;
     try {
-      await refreshSettlementMark(market.id);
-
       const noteAmount = parseUnits(sizeUsd || "0", 6);
       if (noteAmount <= 0n) throw new Error("Enter a size greater than 0");
 
@@ -742,25 +937,31 @@ export function useTradeDesk() {
 
       const lev = BigInt(Math.min(leverage, market.maxLeverage));
       const size = noteAmount * lev;
+      if (!reusable && usdwBal !== undefined && usdwBal < noteAmount) {
+        throw new Error(`Need ${formatUsdw(formatUnits(noteAmount, 6))} USDW (available ${formatUsdw(formatUnits(usdwBal, 6))})`);
+      }
+
+      // Shield proof does not need the mark. Start it while the feed check runs.
+      const markReady = refreshSettlementMark(market.id);
+      const shieldProof = reusable
+        ? null
+        : proveShield({
+            vault: addresses.vault,
+            amount: noteAmount,
+            ownerAddress: address,
+          });
 
       if (reusable) {
         openCommitment = reusable.commitment;
         shieldConfirmed = true;
         setStatus({ kind: "work", text: "1/3 Using shielded USDW…" });
+        await markReady;
       } else {
-        if (usdwBal !== undefined && usdwBal < noteAmount) {
-          throw new Error(`Need ${formatUsdw(formatUnits(noteAmount, 6))} USDW (available ${formatUsdw(formatUnits(usdwBal, 6))})`);
-        }
+        setStatus({ kind: "work", text: "Proving shield…" });
+        const shielded = await shieldProof;
+        await markReady;
+        if (!shielded) throw new Error("Shield proof failed");
 
-        // --- 1) Shield margin into a private note ---
-        setStatus({ kind: "work", text: "1/4 Proving shield (Groth16)…" });
-        const shielded = await proveShield({
-          vault: addresses.vault,
-          amount: noteAmount,
-          ownerAddress: address,
-        });
-
-        setStatus({ kind: "work", text: "1/4 Approving USDW…" });
         const allowance = await publicClient.readContract({
           address: addresses.usdw,
           abi: erc20Abi,
@@ -768,11 +969,12 @@ export function useTradeDesk() {
           args: [address, addresses.vault],
         });
         if (allowance < noteAmount) {
+          setStatus({ kind: "work", text: "Approve USDW once for the vault…" });
           const ah = await writeContractAsync({
             address: addresses.usdw,
             abi: erc20Abi,
             functionName: "approve",
-            args: [addresses.vault, noteAmount],
+            args: [addresses.vault, maxUint256],
           });
           await publicClient.waitForTransactionReceipt({ hash: ah });
         }
@@ -789,7 +991,7 @@ export function useTradeDesk() {
         });
         refreshLocal();
 
-        setStatus({ kind: "work", text: "2/4 Submitting shield…" });
+        setStatus({ kind: "work", text: "Submitting shield…" });
         const shieldHash = await writeContractAsync({
           address: addresses.vault,
           abi: vaultAbi,
@@ -809,12 +1011,10 @@ export function useTradeDesk() {
         openCommitment = shielded.noteCommitment;
       }
 
-      // Rebuild the vault leaf list before proving. The new shield is already in the logs.
       setStatus({
         kind: "work",
-        text: reusable ? "2/3 Syncing vault + proving open…" : "3/4 Syncing vault + proving open…",
+        text: "Proving open…",
       });
-      await resyncVaultLeaves(publicClient);
       await appendLeafAfterInsert(publicClient, openCommitment);
       const after = loadStore();
       const syncedNote = after.notes.find(
@@ -835,15 +1035,10 @@ export function useTradeDesk() {
       // in the inclusion block. The feed keeps moving during shield and vault
       // sync, so the price has to be read after that work — immediately before
       // the proof — and the proof discarded if the feed moves again.
-      const openAttempts = 4;
-      let opened: {
-        proved: Awaited<ReturnType<typeof proveOpen>>;
-        hash: `0x${string}`;
-      } | null = null;
+      let provedOpen: Awaited<ReturnType<typeof proveOpen>> | null = null;
       let lastOpenErr: unknown;
-      const step = reusable ? "3/3" : "4/4";
 
-      for (let attempt = 1; attempt <= openAttempts; attempt++) {
+      for (let attempt = 1; attempt <= 4 && !provedOpen; attempt++) {
         const [fresh, marketRow, root, openedBlock] = await Promise.all([
           publicClient.readContract({
             address: addresses.oracle,
@@ -871,10 +1066,7 @@ export function useTradeDesk() {
         const fundingIndex = absIndex(risk.fundingIndexLong);
         const openedAt = openedBlock.timestamp;
 
-        setStatus({
-          kind: "work",
-          text: `${step} Proving open at the live mark (attempt ${attempt}/${openAttempts})…`,
-        });
+        setStatus({ kind: "work", text: "Proving open at the live mark…" });
         const proved = await proveOpen({
           engine: addresses.engine,
           ownerAddress: address,
@@ -915,52 +1107,42 @@ export function useTradeDesk() {
         const fundingNow = absIndex(riskNow.fundingIndexLong);
         const proveAge = blockAgain.timestamp - openedAt;
         if (markNow !== openMark || impactNow !== impactBps || fundingNow !== fundingIndex || proveAge > 60n) {
-          lastOpenErr = new Error("Settlement mark moved during the proof");
+          lastOpenErr = new Error("Settlement mark moved. Swipe again.");
           continue;
         }
-
-        setStatus({
-          kind: "work",
-          text: `${step} Submitting open (${proved.proveMs} ms prove)…`,
-        });
-        try {
-          const hash = await writeContractAsync({
-            address: addresses.engine,
-            abi: engineAbi,
-            functionName: "open",
-            args: [
-              proved.proof,
-              {
-                merkleRoot: proved.merkleRoot,
-                noteNullifier: proved.noteNullifier,
-                positionCommitment: proved.positionCommitment,
-                changeNoteCommitment: proved.changeNoteCommitment,
-                markPrice: proved.markPrice,
-                openedAt: proved.openedAt,
-                marketId: proved.marketId,
-                collateralId: 1,
-              },
-            ],
-          });
-          const openReceipt = await publicClient.waitForTransactionReceipt({ hash });
-          if (openReceipt.status === "reverted") {
-            lastOpenErr = new Error("Open transaction reverted");
-            continue;
-          }
-          opened = { proved, hash };
-          break;
-        } catch (e) {
-          if (isUserRejected(e)) throw e;
-          lastOpenErr = e;
-        }
+        provedOpen = proved;
       }
 
-      if (!opened) {
+      if (!provedOpen) {
         throw lastOpenErr instanceof Error
           ? lastOpenErr
-          : new Error("Settlement mark changed before the open was included");
+          : new Error("Settlement mark changed. Swipe again.");
       }
-      const { proved, hash } = opened;
+
+      setStatus({ kind: "work", text: "Confirm the open once." });
+      const hash = await writeContractAsync({
+        address: addresses.engine,
+        abi: engineAbi,
+        functionName: "open",
+        args: [
+          provedOpen.proof,
+          {
+            merkleRoot: provedOpen.merkleRoot,
+            noteNullifier: provedOpen.noteNullifier,
+            positionCommitment: provedOpen.positionCommitment,
+            changeNoteCommitment: provedOpen.changeNoteCommitment,
+            markPrice: provedOpen.markPrice,
+            openedAt: provedOpen.openedAt,
+            marketId: provedOpen.marketId,
+            collateralId: 1,
+          },
+        ],
+      });
+      const openReceipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (openReceipt.status === "reverted") {
+        throw new Error("Open missed the mark. Swipe again.");
+      }
+      const proved = provedOpen;
 
       markNoteSpent(openCommitment, "trade");
       if (proved.changeAmount > 0n) {
@@ -1017,8 +1199,9 @@ export function useTradeDesk() {
 
       setStatus({
         kind: "ok",
-        text: `Private ${isLong ? "long" : "short"} ${market.label} @ ${lev}x opened`,
+        text: `Private ${isLong ? "long" : "short"} ${market.label} @ ${lev}x opened.`,
       });
+      void pushBackup();
       setSuccess({
         kind: "open",
         txHash: hash,
@@ -1039,7 +1222,10 @@ export function useTradeDesk() {
           ? `Open failed after shield — USDW is in Notes as Live. Withdraw or retry. (${msg})`
           : msg,
       });
-      if (shieldConfirmed) setBottomTab("notes");
+      if (shieldConfirmed) {
+        setBottomTab("notes");
+        void pushBackup();
+      }
     }
   }, [
     ensureSigner,
@@ -1055,6 +1241,7 @@ export function useTradeDesk() {
     refreshLocal,
     refetchUsdw,
     refreshSettlementMark,
+    pushBackup,
   ]);
 
   const dismissSuccess = useCallback(() => setSuccess(null), []);

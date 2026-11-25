@@ -4,6 +4,7 @@ import type { LocalPosition } from "../../lib/privacy/notes";
 import type { MarketStats } from "../../lib/market-stats";
 import {
   formatCompactUsd,
+  formatPct,
   formatUsd,
 } from "../../lib/format";
 import { rangeSpec, type ListedMarket, type RangeId } from "../../lib/markets-board";
@@ -182,7 +183,64 @@ export function MarketsTable({
   };
 
   return (
-    <div className="markets-table-scroll">
+    <>
+    <div className="markets-mobile lg:hidden">
+      <div className="markets-mobile-head">
+        <span>Market</span>
+        <span>Price / 24h change</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="markets-empty">
+          {watchOnly
+            ? "No markets on your watchlist. Star one from Overview."
+            : query
+              ? "No listed market matches that search."
+              : "No markets are listed on the engine."}
+        </p>
+      ) : (
+        rows.map((row) => {
+          const up = (row.changePct ?? 0) >= 0;
+          const starred = watched.has(row.key);
+          const vol = formatCompactUsd(row.stats?.dailyVolume).replace(/[kmb]$/i, (s) => s.toUpperCase());
+          return (
+            <div key={row.key} className="markets-mobile-row">
+              <button
+                type="button"
+                className={`markets-star ${starred ? "is-on" : ""}`}
+                aria-label={starred ? `Unstar ${row.label}` : `Star ${row.label}`}
+                aria-pressed={starred}
+                onClick={() => onToggleWatch(row.key)}
+              >
+                <img
+                  src={starred ? "/logo/markets/star-filled.svg" : "/logo/markets/star.svg"}
+                  alt=""
+                  width={16}
+                  height={16}
+                />
+              </button>
+              <Link className="markets-mobile-link" to={`/trade?market=${row.key}`}>
+                <span className="markets-mobile-name">
+                  <span className="markets-mobile-pair">
+                    <img src={row.icon} alt="" width={19} height={19} />
+                    <span>{row.label}</span>
+                    <span className="markets-mobile-lev">{row.maxLeverage}x</span>
+                  </span>
+                  <span className="markets-mobile-vol">Vol {vol}</span>
+                </span>
+                <Sparkline closes={row.closes} up={up} width={45} height={16} />
+                <span className="markets-mobile-px">
+                  <span>{formatUsd(row.stats?.markPrice, row.priceDecimals)}</span>
+                  <span className={row.changePct == null ? "" : up ? "is-up" : "is-down"}>
+                    {formatPct(row.changePct, 2)}
+                  </span>
+                </span>
+              </Link>
+            </div>
+          );
+        })
+      )}
+    </div>
+    <div className="markets-table-scroll hidden lg:block">
       <table className="markets-table">
         <thead>
           <tr>
@@ -278,6 +336,7 @@ export function MarketsTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

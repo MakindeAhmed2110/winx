@@ -7,7 +7,7 @@ export function ConnectLabel() {
   return (
     <>
       <span className="trade-connect-full">Connect wallet</span>
-      <span className="trade-connect-short">Connect</span>
+      <span className="trade-connect-short">Connect wallet</span>
     </>
   );
 }

@@ -4,6 +4,7 @@ import {
   http,
   isAddress,
   parseAbiItem,
+  formatUnits,
   parseEther,
   parseUnits,
   type PublicClient,
@@ -12,11 +13,17 @@ import { privateKeyToAccount } from "viem/accounts";
 import { defineChain } from "viem";
 
 export const FAUCET_AMOUNT = parseUnits("1000", 6);
-export const FAUCET_ETH_AMOUNT = parseEther("0.0002");
+/** Covers one close while the base fee is around 10 gwei. */
+export const FAUCET_ETH_AMOUNT = parseEther("0.025");
 export const FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const FAUCET_GAS_PRICE = 20_000_001n;
+const FAUCET_TIP = 1_000_000_000n;
 /** ETH transfer + ERC-20 transfer gas so the drop is not stranded. */
-const FAUCET_GAS_RESERVE = FAUCET_GAS_PRICE * (21_000n + 80_000n);
+const FAUCET_GAS_RESERVE = (10_000_000_000n + FAUCET_TIP) * (21_000n + 80_000n);
+
+async function faucetGasPrice(publicClient: PublicClient): Promise<bigint> {
+  const block = await publicClient.getBlock();
+  return (block.baseFeePerGas ?? 0n) + FAUCET_TIP;
+}
 
 const transferAbi = [
   {
@@ -39,6 +46,8 @@ const transferAbi = [
 ] as const;
 
 const inFlight = new Set<string>();
+/** One sender key. Claims must not read the same nonce. */
+let senderQueue: Promise<unknown> = Promise.resolve();
 /** Robinhood testnet accepts roughly this many blocks per eth_getLogs. */
 const LOG_SPAN = 250_000n;
 const MIN_LOG_SPAN = 2_000n;
@@ -59,7 +68,7 @@ function cooldownFrom(last: number | null) {
   return {
     available,
     amount: "1000",
-    ethAmount: "0.0002",
+    ethAmount: "0.025",
     cooldownMs: FAUCET_COOLDOWN_MS,
     nextClaimAt: available ? null : next,
     retryInMs: available ? 0 : Math.max(0, next - now),
@@ -172,7 +181,73 @@ export async function faucetStatus(address: string, privateKey: `0x${string}` | 
   }
 }
 
-export async function claimFaucet(to: string, privateKey: `0x${string}`) {
+function withSenderLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = senderQueue.then(fn, fn);
+  senderQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+/** Faucet claims and close relays share one nonce sequence. */
+export function withFaucetSenderLock<T>(fn: () => Promise<T>): Promise<T> {
+  return withSenderLock(fn);
+}
+
+async function nextNonce(publicClient: PublicClient, address: `0x${string}`): Promise<bigint> {
+  const [pending, latest] = await Promise.all([
+    publicClient.getTransactionCount({ address, blockTag: "pending" }),
+    publicClient.getTransactionCount({ address, blockTag: "latest" }),
+  ]);
+  return BigInt(pending > latest ? pending : latest);
+}
+
+function nonceTooLow(error: unknown): bigint | undefined {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!/nonce too low/i.test(message)) return undefined;
+  const stated = message.match(/state:\s*(\d+)/);
+  return stated ? BigInt(stated[1]) : 0n;
+}
+
+async function sendAtNonce<T>(
+  publicClient: PublicClient,
+  address: `0x${string}`,
+  send: (nonce: bigint) => Promise<T>,
+): Promise<T> {
+  let nonce = await nextNonce(publicClient, address);
+  let last: unknown;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await send(nonce);
+    } catch (error) {
+      last = error;
+      const bumped = nonceTooLow(error);
+      if (bumped === undefined || attempt === 3) throw error;
+      const again = await nextNonce(publicClient, address);
+      nonce = bumped > again ? bumped : again > nonce ? again : nonce + 1n;
+    }
+  }
+  throw last;
+}
+
+/** A blank amount is the standard drip. A typed amount cannot exceed it. */
+function requestedAmount(
+  raw: string | undefined,
+): { ok: true; amount: bigint } | { ok: false; error: string } {
+  if (!raw || !raw.trim()) return { ok: true, amount: FAUCET_AMOUNT };
+  if (!/^\d+(\.\d{1,6})?$/.test(raw.trim())) return { ok: false, error: "Enter a USDW amount." };
+  const units = parseUnits(raw.trim(), 6);
+  if (units <= 0n) return { ok: false, error: "Enter a USDW amount." };
+  if (units > FAUCET_AMOUNT) return { ok: false, error: "Deposit limit is 1,000 USDW." };
+  return { ok: true, amount: units };
+}
+
+export async function claimFaucet(
+  to: string,
+  privateKey: `0x${string}`,
+  amountRaw?: string,
+) {
   if (!isAddress(to)) {
     return { ok: false as const, status: 400, error: "Invalid address" };
   }
@@ -210,13 +285,18 @@ export async function claimFaucet(to: string, privateKey: `0x${string}`) {
       };
     }
 
+    const requested = requestedAmount(amountRaw);
+    if (!requested.ok) {
+      return { ok: false as const, status: 400, error: requested.error };
+    }
+    const sendAmount = requested.amount;
     const adminBal = await publicClient.readContract({
       address: token,
       abi: transferAbi,
       functionName: "balanceOf",
       args: [account.address],
     });
-    if (adminBal < FAUCET_AMOUNT) {
+    if (adminBal < sendAmount) {
       return {
         ok: false as const,
         status: 503,
@@ -234,41 +314,50 @@ export async function claimFaucet(to: string, privateKey: `0x${string}`) {
     }
 
     const recipient = to as `0x${string}`;
-    const hash = await walletClient.writeContract({
-      account,
-      address: token,
-      abi: transferAbi,
-      functionName: "transfer",
-      args: [recipient, FAUCET_AMOUNT],
-      gasPrice: FAUCET_GAS_PRICE,
-    });
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    if (receipt.status === "reverted") {
-      return { ok: false as const, status: 500, error: "Faucet transfer reverted" };
-    }
-
-    let ethTxHash: `0x${string}` | undefined;
-    try {
-      ethTxHash = await walletClient.sendTransaction({
-        account,
-        to: recipient,
-        value: FAUCET_ETH_AMOUNT,
-        gas: 21_000n,
-        gasPrice: FAUCET_GAS_PRICE,
-      });
-      const ethReceipt = await publicClient.waitForTransactionReceipt({ hash: ethTxHash });
-      if (ethReceipt.status === "reverted") {
-        ethTxHash = undefined;
+    const { hash, ethTxHash } = await withSenderLock(async () => {
+      const gasPrice = await faucetGasPrice(publicClient);
+      const hash = await sendAtNonce(publicClient, account.address, (nonce) =>
+        walletClient.writeContract({
+          account,
+          address: token,
+          abi: transferAbi,
+          functionName: "transfer",
+          args: [recipient, sendAmount],
+          gasPrice,
+          nonce: Number(nonce),
+        }),
+      );
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status === "reverted") {
+        throw new Error("Faucet transfer reverted");
       }
-    } catch {
-      // USDW already landed — the Transfer log is the cooldown.
-    }
+
+      let ethTxHash: `0x${string}` | undefined;
+      try {
+        const ethGasPrice = await faucetGasPrice(publicClient);
+        ethTxHash = await sendAtNonce(publicClient, account.address, (nonce) =>
+          walletClient.sendTransaction({
+            account,
+            to: recipient,
+            value: FAUCET_ETH_AMOUNT,
+            gas: 21_000n,
+            gasPrice: ethGasPrice,
+            nonce: Number(nonce),
+          }),
+        );
+        const ethReceipt = await publicClient.waitForTransactionReceipt({ hash: ethTxHash });
+        if (ethReceipt.status === "reverted") ethTxHash = undefined;
+      } catch {
+        // USDW already landed — the Transfer log is the cooldown.
+      }
+      return { hash, ethTxHash };
+    });
 
     const now = Date.now();
     return {
       ok: true as const,
-      amount: "1000",
-      ethAmount: "0.0002",
+      amount: formatUnits(sendAmount, 6),
+      ethAmount: "0.025",
       txHash: hash,
       ethTxHash,
       nextClaimAt: now + FAUCET_COOLDOWN_MS,

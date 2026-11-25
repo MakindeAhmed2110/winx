@@ -1,6 +1,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { usePrivyStatus } from "../auth/privy-status";
 import { formatUsdw } from "../../lib/format";
+import { useLiveMark } from "../../hooks/use-live-mark";
 import type { TradeDeskState } from "../../hooks/useTradeDesk";
 import { LeverageSlider } from "./LeverageSlider";
 
@@ -27,13 +28,15 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
     status,
   } = desk;
 
+  const live = useLiveMark(market.extendedMarket);
+  const px = live ?? markUsd;
   const marginUsd = Number(sizeUsd) || 0;
   const notional = marginUsd * leverage;
   const liqApprox =
-    markUsd && marginUsd > 0
+    px && marginUsd > 0
       ? isLong
-        ? markUsd * (1 - 0.9 / leverage)
-        : markUsd * (1 + 0.9 / leverage)
+        ? px * (1 - 0.9 / leverage)
+        : px * (1 + 0.9 / leverage)
       : null;
 
   return (

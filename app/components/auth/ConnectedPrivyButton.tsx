@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { robinhoodTestnet } from "../../lib/config";
 import { dismissPrivyModals } from "../../lib/dismiss-privy";
+import {
+  embeddedWalletAddress,
+  externalWalletAddress,
+  isDirectWallet,
+} from "../../lib/operating-wallet";
 import { ConnectLabel } from "../ConnectButton";
 import { ConnectModal } from "./ConnectModal";
 
@@ -40,7 +45,6 @@ export default function ConnectedPrivyButton() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   function closeModal() {
-    dismissPrivyModals();
     setOpen(false);
   }
 
@@ -60,8 +64,11 @@ export default function ConnectedPrivyButton() {
     };
   }, [menuOpen]);
 
-  const display =
-    address ?? user?.wallet?.address ?? user?.email?.address ?? null;
+  const embedded = authenticated ? embeddedWalletAddress(user) : undefined;
+  const external = authenticated ? externalWalletAddress(user) : undefined;
+  const direct = isDirectWallet(external);
+  const trading = direct ? (address ?? external) : embedded;
+  const display = trading ?? user?.email?.address ?? null;
 
   if (!ready) {
     return (
@@ -85,10 +92,14 @@ export default function ConnectedPrivyButton() {
   }
 
   const wrong = chainId != null && chainId !== robinhoodTestnet.id;
-  const short =
-    display && display.startsWith("0x")
+  const kind = !display ? "" : direct ? "Direct" : "Embedded";
+  const short = display
+    ? display.startsWith("0x")
       ? `${display.slice(0, 6)}…${display.slice(-4)}`
-      : display ?? "Account";
+      : display
+    : direct
+      ? "Account"
+      : "Embedded wallet";
 
   async function disconnect() {
     if (busy) return;
@@ -142,6 +153,7 @@ export default function ConnectedPrivyButton() {
           onClick={() => setMenuOpen((v) => !v)}
         >
           <span className="winx-account-dot" aria-hidden />
+          {kind ? <span className="winx-account-kind">{kind}</span> : null}
           <span className="mono">{short}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
@@ -158,9 +170,16 @@ export default function ConnectedPrivyButton() {
           <div className="winx-account-menu" role="menu">
             {display ? (
               <div className="winx-account-menu-addr" title={display}>
+                <span>{direct ? "Direct wallet" : "Embedded wallet"}</span>
                 {display.startsWith("0x")
                   ? `${display.slice(0, 10)}…${display.slice(-8)}`
                   : display}
+              </div>
+            ) : null}
+            {!direct && external ? (
+              <div className="winx-account-menu-addr" title={external}>
+                <span>Linked external</span>
+                {`${external.slice(0, 10)}…${external.slice(-8)}`}
               </div>
             ) : null}
             <button

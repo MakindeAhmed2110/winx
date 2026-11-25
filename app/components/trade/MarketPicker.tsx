@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { markets } from "../../lib/config";
 import { formatUsd } from "../../lib/format";
 import type { MarketKey } from "../../hooks/useTradeDesk";
+import { useLiveMark } from "../../hooks/use-live-mark";
 import { useMarketStats } from "../../hooks/use-market-stats";
 
 type Props = {
@@ -312,7 +313,8 @@ function MarketRow({
 }) {
   const m = markets[marketKey];
   const { data: stats } = useMarketStats(m.extendedMarket, 5000);
-  const price = stats?.markPrice ?? stats?.lastPrice;
+  const live = useLiveMark(m.extendedMarket);
+  const price = live ?? stats?.markPrice ?? stats?.lastPrice;
   const change = stats?.dailyChange;
   const changePct = stats?.dailyChangePct;
   const up = change == null ? undefined : change >= 0;

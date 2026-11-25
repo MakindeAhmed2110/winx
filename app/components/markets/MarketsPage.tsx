@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TradeHeader } from "../trade/TradeHeader";
+import { MobileTradeDock } from "../trade/MobileTradeDock";
 import { useListedMarkets } from "../../hooks/useListedMarkets";
 import { useMarketsBoard } from "../../hooks/useMarketsBoard";
 import { useNow } from "../../hooks/use-poll";
@@ -127,7 +128,7 @@ export function MarketsPage() {
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search"
                 />
-                <SearchIcon />
+                <img src="/logo/markets/search.svg" alt="" width={16} height={16} className="markets-search-icon" />
               </label>
               <MarketsTable
                 listed={listed}
@@ -144,15 +145,8 @@ export function MarketsPage() {
           )}
         </div>
       </main>
+      <MobileTradeDock active="markets" showSides={false} />
     </div>
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className="markets-search-icon">
-      <circle cx="7" cy="7" r="4.25" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" />
-      <path d="M10.2 10.2 13 13" stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}

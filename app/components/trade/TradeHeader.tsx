@@ -34,25 +34,19 @@ export function TradeHeader({ onFaucetClaimed }: { onFaucetClaimed?: () => void 
             [
               ["/trade", "Perps"],
               ["/markets", "Markets"],
-              ["#portfolio", "Portfolio"],
+              ["/portfolio", "Portfolio"],
             ] as const
-          ).map(([to, label]) =>
-            to.startsWith("/") ? (
-              <NavLink
-                key={label}
-                to={to}
-                className={({ isActive }) =>
-                  `trade-nav-link ${isActive ? "is-active" : ""}`
-                }
-              >
-                {label}
-              </NavLink>
-            ) : (
-              <a key={label} href={to} className="trade-nav-link">
-                {label}
-              </a>
-            ),
-          )}
+          ).map(([to, label]) => (
+            <NavLink
+              key={label}
+              to={to}
+              className={({ isActive }) =>
+                `trade-nav-link ${isActive ? "is-active" : ""}`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
         </nav>
       </div>
 

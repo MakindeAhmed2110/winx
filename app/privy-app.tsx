@@ -7,6 +7,7 @@ import { http } from "viem";
 import { useAccount, useSwitchChain } from "wagmi";
 import { NeutralizePrivyDialogs } from "./components/auth/NeutralizePrivyDialogs";
 import { robinhoodTestnet } from "./lib/config";
+import { tradingWalletForWagmi } from "./lib/operating-wallet";
 import { privyAppId, privyConfig } from "./lib/privy";
 
 const wagmiConfig = createConfig({
@@ -52,7 +53,7 @@ export default function PrivyApp({
   return (
     <PrivyProvider appId={privyAppId} config={privyConfig}>
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>
+        <WagmiProvider config={wagmiConfig} setActiveWalletForWagmi={tradingWalletForWagmi}>
           <MarkReady onReady={onReady} />
           <NeutralizePrivyDialogs />
           <RobinhoodChainGuard>{children}</RobinhoodChainGuard>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAccount } from "wagmi";
 import { explorerTx } from "../../lib/config";
+import { useOperatingAddress } from "../../lib/operating-wallet";
 
 type FaucetStatus = {
   available: boolean;
@@ -45,7 +45,7 @@ export function FaucetModal({
   onClose: () => void;
   onClaimed?: () => void;
 }) {
-  const { address } = useAccount();
+  const address = useOperatingAddress();
   const [status, setStatus] = useState<FaucetStatus | null>(null);
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
@@ -115,7 +115,7 @@ export function FaucetModal({
           setStatus((s) => ({
             available: false,
             amount: s?.amount ?? "1000",
-            ethAmount: s?.ethAmount ?? "0.0002",
+            ethAmount: s?.ethAmount ?? "0.025",
             nextClaimAt: json.nextClaimAt,
             retryInMs: json.retryInMs,
           }));
@@ -127,7 +127,7 @@ export function FaucetModal({
       setStatus({
         available: false,
         amount: json.amount,
-        ethAmount: json.ethAmount ?? "0.0002",
+        ethAmount: json.ethAmount ?? "0.025",
         nextClaimAt: json.nextClaimAt ?? Date.now() + 24 * 60 * 60 * 1000,
       });
       try {
@@ -182,7 +182,7 @@ export function FaucetModal({
 
         <p className="relative mt-3 text-[13px] leading-relaxed text-mist">
           Claim <span className="tabular-nums text-paper">1,000 $USDW</span> and{" "}
-          <span className="tabular-nums text-paper">0.0002 ETH</span> to the connected
+          <span className="tabular-nums text-paper">0.025 ETH</span> to the connected
           wallet. One drop per address every 24 hours.
         </p>
 
@@ -192,7 +192,7 @@ export function FaucetModal({
         >
           <div className="flex items-center justify-between gap-3">
             <span className="text-[11px] text-fog">Amount</span>
-            <span className="text-[13px] tabular-nums text-paper">1,000 USDW + 0.0002 ETH</span>
+            <span className="text-[13px] tabular-nums text-paper">1,000 USDW + 0.025 ETH</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-[11px] text-fog">Recipient</span>
@@ -211,7 +211,7 @@ export function FaucetModal({
         {txHash ? (
           <div className="relative mt-4 text-center">
             <p className="text-[13px]" style={{ color: "var(--trade-green)" }}>
-              {ethTxHash ? "1,000 USDW + 0.0002 ETH sent" : "1,000 USDW sent"}
+              {ethTxHash ? "1,000 USDW + 0.025 ETH sent" : "1,000 USDW sent"}
             </p>
             <a
               href={explorerTx(txHash)}
@@ -252,7 +252,7 @@ export function FaucetModal({
                 ? "Claimed"
                 : locked
                   ? `Available in ${formatCountdown(retryMs)}`
-                  : "Claim 1,000 USDW + 0.0002 ETH"}
+                  : "Claim 1,000 USDW + 0.025 ETH"}
         </button>
       </div>
     </div>,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseMarketStats, type MarketStats } from "../lib/market-stats";
+import { extendedMarketStatsUrl, liveMarketFetch, parseMarketStats, type MarketStats } from "../lib/market-stats";
 import { rangeSpec, type ListedMarket, type RangeId } from "../lib/markets-board";
 
 export type BoardQuote = {
@@ -8,10 +8,7 @@ export type BoardQuote = {
 };
 
 async function fetchStats(extendedMarket: string): Promise<MarketStats | null> {
-  const res = await fetch(
-    `/extended/api/v1/info/markets?market=${encodeURIComponent(extendedMarket)}`,
-    { headers: { Accept: "application/json" } },
-  );
+  const res = await fetch(extendedMarketStatsUrl(extendedMarket), liveMarketFetch);
   if (!res.ok) return null;
   const body = (await res.json()) as {
     status: string;

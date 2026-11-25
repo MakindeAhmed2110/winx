@@ -1,5 +1,6 @@
 import { createPublicClient, http } from "viem";
 import { markFeedPairs, type MarkFeedPair } from "./config";
+import { extendedMarketStatsUrl, liveMarketFetch } from "./market-stats";
 
 const feedAbi = [
   {
@@ -53,10 +54,7 @@ function toAnswer1e8(usd: number): bigint {
 }
 
 async function extendedAnswer(market: string): Promise<bigint> {
-  const res = await fetch(
-    `/extended/api/v1/info/markets?market=${encodeURIComponent(market)}`,
-    { headers: { Accept: "application/json" } },
-  );
+  const res = await fetch(extendedMarketStatsUrl(market), liveMarketFetch);
   if (!res.ok) throw new Error(`Extended HTTP ${res.status}`);
   const body = (await res.json()) as {
     status?: string;
@@ -182,6 +180,22 @@ export async function fetchLiveAnswer1e8(marketId: number): Promise<bigint> {
   return liveAnswer(pair);
 }
 
+export async function settlementUpdatedAt(
+  readContract: ReadFn,
+  feed: `0x${string}`,
+): Promise<bigint | null> {
+  try {
+    const round = await readContract({
+      address: feed,
+      abi: feedAbi,
+      functionName: "latestRoundData",
+    });
+    return Array.isArray(round) ? round[3] : round.updatedAt;
+  } catch {
+    return null;
+  }
+}
+
 export async function requestKeeperMarkSync(): Promise<boolean> {
   const url = import.meta.env.VITE_KEEPER_URL as string | undefined;
   const token = import.meta.env.VITE_KEEPER_TOKEN as string | undefined;
@@ -190,6 +204,7 @@ export async function requestKeeperMarkSync(): Promise<boolean> {
     const res = await fetch(new URL("/sync-marks", url), {
       method: "POST",
       headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8_000),
     });
     return res.ok;
   } catch {

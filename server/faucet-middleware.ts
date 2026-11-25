@@ -46,7 +46,7 @@ export async function handleFaucetRequest(req: IncomingMessage, res: ServerRespo
       json(res, 200, {
         available: true,
         amount: "1000",
-        ethAmount: "0.0002",
+        ethAmount: "0.025",
         cooldownMs: 24 * 60 * 60 * 1000,
       });
       return;
@@ -91,7 +91,11 @@ export async function handleFaucetRequest(req: IncomingMessage, res: ServerRespo
     return;
   }
 
-  const result = await claimFaucet(address, key);
+  const amount =
+    payload && typeof payload === "object" && "amount" in payload
+      ? String((payload as { amount?: unknown }).amount ?? "")
+      : "";
+  const result = await claimFaucet(address, key, amount);
   if (!result.ok) {
     json(res, result.status, {
       error: result.error,

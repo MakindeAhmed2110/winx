@@ -2,20 +2,32 @@ import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { handleBackupRequest, isBackupPath } from "./server/backup-middleware.ts";
 import { handleFaucetRequest, isFaucetPath } from "./server/faucet-middleware.ts";
+import { handleTimedTxRequest, isTimedTxPath } from "./server/timed-tx-middleware.ts";
+import { handleWalletPegRequest, isWalletPegPath } from "./server/wallet-peg-middleware.ts";
 
-function faucetMiddleware() {
+function apiMiddleware() {
   return (req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse, next: () => void) => {
-    if (!isFaucetPath(req.url)) {
+    const run = isFaucetPath(req.url)
+      ? handleFaucetRequest(req, res)
+      : isBackupPath(req.url)
+        ? handleBackupRequest(req, res)
+        : isWalletPegPath(req.url)
+          ? handleWalletPegRequest(req, res)
+          : isTimedTxPath(req.url)
+            ? handleTimedTxRequest(req, res)
+            : null;
+    if (!run) {
       next();
       return;
     }
-    void handleFaucetRequest(req, res).catch((err) => {
-      console.error("[faucet]", err);
+    void run.catch((err) => {
+      console.error("[api]", err instanceof Error ? err.message : err);
       if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ error: "Faucet failed" }));
+        res.end(JSON.stringify({ error: "Request failed" }));
       }
     });
   };
@@ -26,15 +38,15 @@ function faucetPlugin(): Plugin {
     name: "winx-faucet",
     configureServer(server) {
       // Before Vite's file middleware, which would serve api/faucet.ts as source.
-      server.middlewares.use(faucetMiddleware());
+      server.middlewares.use(apiMiddleware());
       // Post-hook so this also runs before React Router's SPA catch-all.
       return () => {
-        server.middlewares.use(faucetMiddleware());
+        server.middlewares.use(apiMiddleware());
       };
     },
     configurePreviewServer(server) {
       return () => {
-        server.middlewares.use(faucetMiddleware());
+        server.middlewares.use(apiMiddleware());
       };
     },
   };

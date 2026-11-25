@@ -1,3 +1,14 @@
+/** Extended sends `cache-control: max-age=60`, so a plain poll repeats the same print for a minute. */
+export function extendedMarketStatsUrl(market: string): string {
+  const q = new URLSearchParams({ market, _: String(Date.now()) });
+  return `/extended/api/v1/info/markets?${q}`;
+}
+
+export const liveMarketFetch: RequestInit = {
+  cache: "no-store",
+  headers: { Accept: "application/json" },
+};
+
 export function parseMarketStats(raw: Record<string, string | number>): MarketStats {
   const n = (k: string) => Number(raw[k] ?? 0);
   return {

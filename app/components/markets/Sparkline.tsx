@@ -1,17 +1,17 @@
 type Props = {
   closes: number[];
   up: boolean;
+  width?: number;
+  height?: number;
 };
 
-export function Sparkline({ closes, up }: Props) {
+export function Sparkline({ closes, up, width = 78, height = 28 }: Props) {
   if (closes.length < 2) {
     return <span className="markets-spark markets-spark-empty" aria-hidden />;
   }
   const min = Math.min(...closes);
   const max = Math.max(...closes);
   const span = max - min || 1;
-  const width = 78;
-  const height = 28;
   const points = closes
     .map((close, index) => {
       const x = (index / (closes.length - 1)) * width;

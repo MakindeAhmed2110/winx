@@ -36,15 +36,20 @@ export function OrderBook({
   collapsed = false,
   collapsible = false,
   onToggle,
+  forcedTab,
+  hideTabs = false,
 }: {
   marketKey: MarketKey;
   collapsed?: boolean;
   /** Beside the chart: fixed width with the collapse toggle. Otherwise it fills its row. */
   collapsible?: boolean;
   onToggle?: () => void;
+  forcedTab?: BookTab;
+  hideTabs?: boolean;
 }) {
-  const [tab, setTab] = useState<BookTab>("book");
+  const [tab, setTab] = useState<BookTab>(forcedTab ?? "book");
   const live = !collapsed;
+  const activeTab = forcedTab ?? tab;
 
   return (
     <section
@@ -60,6 +65,7 @@ export function OrderBook({
         }`}
         style={{ width: collapsible ? ORDER_BOOK_WIDTH : "100%" }}
       >
+        {hideTabs ? null : (
         <div className="flex w-full items-center gap-4 border-b border-white/[0.06]">
           {(
             [
@@ -70,16 +76,17 @@ export function OrderBook({
             <button
               key={k}
               type="button"
-              className={`trade-tab ${tab === k ? "is-active" : ""}`}
+              className={`trade-tab ${activeTab === k ? "is-active" : ""}`}
               onClick={() => setTab(k)}
             >
               {label}
             </button>
           ))}
         </div>
+        )}
 
-        <div key={tab} className="trade-swap min-h-0 flex-1 overflow-hidden">
-          {tab === "book" ? (
+        <div key={activeTab} className="trade-swap min-h-0 flex-1 overflow-hidden">
+          {activeTab === "book" ? (
             <BookBody marketKey={marketKey} live={live} />
           ) : (
             <TradesBody marketKey={marketKey} live={live} />

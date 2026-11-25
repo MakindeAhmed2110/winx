@@ -29,8 +29,9 @@ async function fullProve(
   name: "shield" | "open" | "unshield" | "close",
   input: Record<string, unknown>,
 ) {
-  const wasm = `/circuits/${name}.wasm`;
-  const zkey = `/circuits/${name}.zkey`;
+  const root = (globalThis as { __WINX_CIRCUITS__?: string }).__WINX_CIRCUITS__;
+  const wasm = root ? `${root}/${name}.wasm` : `/circuits/${name}.wasm`;
+  const zkey = root ? `${root}/${name}.zkey` : `/circuits/${name}.zkey`;
   const t0 = performance.now();
   const { proof, publicSignals } = await groth16.fullProve(input, wasm, zkey);
   const proveMs = Math.round(performance.now() - t0);

@@ -1,5 +1,4 @@
 import {
-  useCreateWallet,
   useLoginWithEmail,
   useLoginWithSiwe,
   usePrivy,
@@ -78,7 +77,9 @@ export function ConnectModal({ open, onClose }: Props) {
   }, [open]);
 
   function handleClose() {
-    dismissPrivyModals();
+    // A successful login starts embedded-wallet creation in a Privy dialog.
+    // Closing that dialog aborts the new trading wallet.
+    if (!authenticated) dismissPrivyModals();
     onClose();
   }
 
@@ -154,7 +155,6 @@ async function ensureChain(provider: Eip1193Provider) {
 
 function ConnectModalBody({ onClose }: { onClose: () => void }) {
   const { sendCode, loginWithCode, state: emailState } = useLoginWithEmail();
-  const { createWallet } = useCreateWallet();
   const { generateSiweMessage, loginWithSiwe } = useLoginWithSiwe();
   const { disconnectAsync } = useDisconnect();
 
@@ -223,7 +223,6 @@ function ConnectModalBody({ onClose }: { onClose: () => void }) {
       walletClientType: privyWalletClientType(id),
       connectorType: "injected",
     });
-    dismissPrivyModals();
     onClose();
   }
 
@@ -275,12 +274,6 @@ function ConnectModalBody({ onClose }: { onClose: () => void }) {
             if (!code.trim()) return;
             void run(async () => {
               await loginWithCode({ code: code.trim() });
-              try {
-                await createWallet();
-              } catch {
-                // Already has a wallet — fine.
-              }
-              dismissPrivyModals();
               onClose();
             });
           }}

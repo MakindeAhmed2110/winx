@@ -171,6 +171,15 @@ export function addPosition(pos: LocalPosition) {
   return store;
 }
 
+/** Replace notes and positions from a decrypted backup. Leaf list stays local. */
+export function replaceNotesAndPositions(notes: LocalNote[], positions: LocalPosition[]) {
+  const store = loadStore();
+  store.notes = notes;
+  store.positions = positions;
+  save(store);
+  return store;
+}
+
 export function removePosition(commitment: `0x${string}`) {
   const store = loadStore();
   store.positions = store.positions.filter(

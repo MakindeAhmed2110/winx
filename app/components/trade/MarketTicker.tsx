@@ -6,6 +6,7 @@ import {
   formatUsd,
 } from "../../lib/format";
 import type { MarketKey } from "../../hooks/useTradeDesk";
+import { useLiveMark } from "../../hooks/use-live-mark";
 import { useMarketStats } from "../../hooks/use-market-stats";
 import { useNow } from "../../hooks/use-poll";
 import { MarketPicker } from "./MarketPicker";
@@ -15,15 +16,17 @@ type Props = {
   onSelect: (key: MarketKey) => void;
   /** Unused once Extended stats load; kept for call-site compatibility. */
   markUsd: number | null;
+  leverage?: number;
 };
 
-export function MarketTicker({ marketKey, onSelect }: Props) {
+export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
   const market = markets[marketKey];
   const { data: stats } = useMarketStats(market.extendedMarket, 3000);
+  const live = useLiveMark(market.extendedMarket);
   const now = useNow();
   const decimals = market.priceDecimals;
 
-  const mark = stats?.markPrice ?? null;
+  const mark = live ?? stats?.markPrice ?? null;
   const oracle = stats?.indexPrice ?? null;
   const changePct = stats?.dailyChangePct;
   const changeUp = changePct == null ? undefined : changePct >= 0;
@@ -35,12 +38,29 @@ export function MarketTicker({ marketKey, onSelect }: Props) {
       : null;
 
   return (
-    <div className="trade-ticker flex flex-col items-stretch gap-4 xl:flex-row xl:items-center xl:gap-6 2xl:gap-8">
-      <div className="trade-ticker-pair shrink-0">
-        <MarketPicker marketKey={marketKey} onSelect={onSelect} />
+    <div className="trade-ticker flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:gap-6 2xl:gap-8">
+      <div className="trade-ticker-pair flex min-w-0 items-center justify-between gap-3">
+        <div className="trade-ticker-id flex min-w-0 flex-col items-start gap-[5px]">
+          <MarketPicker marketKey={marketKey} onSelect={onSelect} />
+          {leverage != null ? (
+            <span className="trade-pair-lev lg:hidden">{leverage}x</span>
+          ) : null}
+        </div>
+        <div className="trade-ticker-quote lg:hidden">
+          <span className="trade-ticker-quote-px">
+            {formatUsd(mark, decimals === 0 ? 1 : decimals)}
+          </span>
+          <span
+            className={`trade-ticker-quote-chg ${
+              changeUp === true ? "is-up" : changeUp === false ? "is-down" : ""
+            }`}
+          >
+            {formatPct(changePct, 1, true)} (24h)
+          </span>
+        </div>
       </div>
 
-      <div className="trade-ticker-scroll no-scrollbar -mx-4 min-w-0 flex-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+      <div className="trade-ticker-scroll no-scrollbar -mx-4 hidden min-w-0 flex-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:block lg:px-0">
         <div className="trade-ticker-stats flex w-max min-w-full items-center gap-5 uppercase 2xl:gap-6">
           <TickerStat
             label="Mark"

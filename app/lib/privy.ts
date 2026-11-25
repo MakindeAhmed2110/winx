@@ -1,5 +1,6 @@
-import type { PrivyClientConfig, WalletListEntry } from "@privy-io/react-auth";
+import { createWalletCreationOnLoginPlugin, type PrivyClientConfig, type WalletListEntry } from "@privy-io/react-auth";
 import { robinhoodTestnet } from "./config";
+import { shouldCreateEmbedded } from "./operating-wallet";
 import { privyAppId } from "./privy-env";
 
 export { privyAppId };
@@ -31,6 +32,10 @@ export const ALL_WALLET_LIST: WalletListEntry[] = [
   "wallet_connect",
 ];
 
+const walletCreation = createWalletCreationOnLoginPlugin({
+  shouldCreateWallet: ({ user }) => shouldCreateEmbedded(user),
+});
+
 export const privyConfig: PrivyClientConfig = {
   defaultChain: robinhoodTestnet,
   supportedChains: [robinhoodTestnet],
@@ -45,8 +50,9 @@ export const privyConfig: PrivyClientConfig = {
   },
   embeddedWallets: {
     ethereum: {
-      createOnLogin: "users-without-wallets",
+      createOnLogin: "all-users",
     },
     showWalletUIs: false,
   },
+  plugins: [walletCreation],
 };

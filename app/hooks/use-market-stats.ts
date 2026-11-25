@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseMarketStats, type MarketStats } from "../lib/market-stats";
+import { extendedMarketStatsUrl, liveMarketFetch, parseMarketStats, type MarketStats } from "../lib/market-stats";
 
 /** Live Extended market stats via the Vite `/extended` proxy (SPA has no SSR loaders). */
 export function useMarketStats(market: string, intervalMs = 3000) {
@@ -15,10 +15,10 @@ export function useMarketStats(market: string, intervalMs = 3000) {
       controller?.abort();
       controller = new AbortController();
       try {
-        const res = await fetch(
-          `/extended/api/v1/info/markets?market=${encodeURIComponent(market)}`,
-          { signal: controller.signal, headers: { Accept: "application/json" } },
-        );
+        const res = await fetch(extendedMarketStatsUrl(market), {
+          ...liveMarketFetch,
+          signal: controller.signal,
+        });
         if (!res.ok) throw new Error(String(res.status));
         const body = (await res.json()) as {
           status: string;
