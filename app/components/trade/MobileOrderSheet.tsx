@@ -186,7 +186,11 @@ export function MobileOrderSheet({
                   key={id}
                   type="button"
                   className={orderType === id ? "is-active" : ""}
-                  onClick={() => setOrderType(id)}
+                  disabled={id !== "market"}
+                  title={id === "market" ? undefined : "Coming with the private limit book"}
+                  onClick={() => {
+                    if (id === "market") setOrderType(id);
+                  }}
                 >
                   {label}
                 </button>

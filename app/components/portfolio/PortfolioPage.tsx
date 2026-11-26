@@ -258,7 +258,7 @@ export function PortfolioPage() {
               rows={rows}
               busy={desk.busy}
               canClose={connected}
-              onClose={(position) => void desk.onClosePosition(position)}
+              onClose={(position, opts) => desk.onClosePosition(position, opts)}
             />
           ) : null}
 
@@ -436,8 +436,25 @@ function PositionsTable({
   }[];
   busy: boolean;
   canClose: boolean;
-  onClose: (position: LocalPosition) => void;
+  onClose: (position: LocalPosition, opts?: { quiet?: boolean }) => Promise<boolean>;
 }) {
+  const [closingAll, setClosingAll] = useState(false);
+  const locked = busy || closingAll || !canClose;
+
+  const closeAll = async () => {
+    if (locked || rows.length === 0) return;
+    setClosingAll(true);
+    try {
+      const batch = rows.length > 1;
+      for (const row of rows) {
+        const ok = await onClose(row.position, batch ? { quiet: true } : undefined);
+        if (!ok) return;
+      }
+    } finally {
+      setClosingAll(false);
+    }
+  };
+
   return (
     <div className="portfolio-table-wrap">
       <div className="portfolio-row is-head is-positions">
@@ -453,14 +470,11 @@ function PositionsTable({
         <span className="portfolio-row-action">
           <button
             type="button"
-            className="portfolio-sell"
-            disabled={busy || !canClose || rows.length === 0}
-            onClick={() => {
-              const first = rows[0]?.position;
-              if (first) onClose(first);
-            }}
+            className="portfolio-close"
+            disabled={locked || rows.length === 0}
+            onClick={() => void closeAll()}
           >
-            Sell all
+            {closingAll ? "Closing…" : "Close all"}
           </button>
         </span>
       </div>
@@ -483,11 +497,11 @@ function PositionsTable({
               <span className="portfolio-row-action">
                 <button
                   type="button"
-                  className="portfolio-sell"
-                  disabled={busy || !canClose}
-                  onClick={() => onClose(row.position)}
+                  className="portfolio-close"
+                  disabled={locked}
+                  onClick={() => void onClose(row.position)}
                 >
-                  Sell
+                  {busy ? "Closing…" : "Close"}
                 </button>
               </span>
             </div>

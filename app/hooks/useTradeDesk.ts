@@ -699,8 +699,9 @@ export function useTradeDesk() {
   );
 
   const onClosePosition = useCallback(
-    async (pos: LocalPosition) => {
-      if (!(await ensureSigner()) || !address || !publicClient) return;
+    async (pos: LocalPosition, opts?: { quiet?: boolean }): Promise<boolean> => {
+      const quiet = opts?.quiet === true;
+      if (!(await ensureSigner()) || !address || !publicClient) return false;
       const clock = startCloseClock();
       try {
         const stillOpen = await publicClient.readContract({
@@ -717,8 +718,8 @@ export function useTradeDesk() {
             kind: "err",
             text: "This position is already closed on-chain. Check Notes for a Live payout — if none, the blinding was never saved.",
           });
-          setBottomTab("notes");
-          return;
+          if (!quiet) setBottomTab("notes");
+          return false;
         }
 
         await refreshSettlementMark(pos.marketId);
@@ -864,19 +865,21 @@ export function useTradeDesk() {
         refreshLocal();
         const backed = await pushBackup();
 
-        setSuccess({
-          kind: "close",
-          txHash: hash,
-          marketId: pos.marketId,
-          isLong: pos.isLong,
-          leverage: pos.leverage,
-          margin: pos.margin,
-          size: pos.size,
-          entryPrice: pos.entryPrice,
-          exitPrice: proved.exitPrice.toString(),
-          leftover: proved.leftover.toString(),
-          protocolFee: proved.protocolFee.toString(),
-        });
+        if (!quiet) {
+          setSuccess({
+            kind: "close",
+            txHash: hash,
+            marketId: pos.marketId,
+            isLong: pos.isLong,
+            leverage: pos.leverage,
+            margin: pos.margin,
+            size: pos.size,
+            entryPrice: pos.entryPrice,
+            exitPrice: proved.exitPrice.toString(),
+            leftover: proved.leftover.toString(),
+            protocolFee: proved.protocolFee.toString(),
+          });
+        }
         setStatus({
           kind: "ok",
           text:
@@ -884,8 +887,8 @@ export function useTradeDesk() {
               ? `Closed · Live payout ${formatUsdw(formatUnits(proved.leftover, 6))} USDW — Notes → Withdraw`
               : "Closed · no payout (loss/fees consumed equity)") + backupNote(backed),
         });
-        setBottomTab("notes");
-        return;
+        if (!quiet) setBottomTab("notes");
+        return true;
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
           const permanent = /relayer is low|not configured|Only a close|server failed/i.test(message);
@@ -917,8 +920,8 @@ export function useTradeDesk() {
                     ? `Closed · Live payout ${formatUsdw(formatUnits(proved.leftover, 6))} USDW — Notes → Withdraw`
                     : "Closed · no payout (loss/fees consumed equity)") + backupNote(backed),
               });
-              setBottomTab("notes");
-              return;
+              if (!quiet) setBottomTab("notes");
+              return true;
             }
           }
           if (!permanent && attempt < 2) {
@@ -928,9 +931,11 @@ export function useTradeDesk() {
           throw e;
         }
         }
+        return false;
       } catch (e) {
         refreshLocal();
         setStatus({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+        return false;
       } finally {
         clock.stop();
       }
