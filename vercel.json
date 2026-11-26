@@ -20,6 +20,10 @@
       "destination": "https://api.coinmarketcap.com/:path*"
     },
     {
+      "source": "/cmc-pro/:path*",
+      "destination": "https://pro-api.coinmarketcap.com/:path*"
+    },
+    {
       "source": "/rhj/:path*",
       "destination": "https://api.robinhood.com/rhj/:path*"
     },

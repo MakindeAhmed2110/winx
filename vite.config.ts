@@ -109,7 +109,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
         },
-        "/cmc": {
+        "^/cmc-pro": {
+          target: "https://pro-api.coinmarketcap.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/cmc-pro/, ""),
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0",
+          },
+        },
+        "^/cmc/": {
           target: "https://api.coinmarketcap.com",
           changeOrigin: true,
           secure: true,

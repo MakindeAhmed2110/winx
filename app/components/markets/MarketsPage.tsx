@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { TradeHeader } from "../trade/TradeHeader";
 import { MobileTradeDock } from "../trade/MobileTradeDock";
+import { useCmcQuotes } from "../../hooks/useCmcQuote";
 import { useListedMarkets } from "../../hooks/useListedMarkets";
 import { useMarketsBoard } from "../../hooks/useMarketsBoard";
 import { useNow } from "../../hooks/use-poll";
@@ -31,6 +32,7 @@ export function MarketsPage() {
   const [watched, setWatched] = useState<Set<string>>(() => readWatch());
   const [positions, setPositions] = useState<LocalPosition[]>([]);
   const quotes = useMarketsBoard(listed, range);
+  const cmc = useCmcQuotes((listed ?? []).map((market) => market.cmcId));
   const now = useNow();
 
   useEffect(() => {
@@ -57,11 +59,11 @@ export function MarketsPage() {
   const moves = useMemo(() => {
     const out: Record<string, number | null> = {};
     for (const market of listed ?? []) {
-      const quote = quotes[market.key];
-      if (range === "1d" && quote?.stats) {
-        out[market.key] = quote.stats.dailyChangePct;
+      if (range === "1d") {
+        out[market.key] = cmc[market.cmcId]?.changePct ?? null;
         continue;
       }
+      const quote = quotes[market.key];
       const closes = quote?.closes ?? [];
       if (closes.length < 2 || closes[0] === 0) {
         out[market.key] = null;
@@ -72,7 +74,7 @@ export function MarketsPage() {
       out[market.key] = ((last - first) / first) * 100;
     }
     return out;
-  }, [listed, quotes, range]);
+  }, [listed, quotes, range, cmc]);
 
   return (
     <div className="markets-page">

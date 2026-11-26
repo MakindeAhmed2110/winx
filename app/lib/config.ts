@@ -234,14 +234,14 @@ export const markets = {
     feed: "0xda60fb0fdf6879e62d342e77e6400804ca06f124",
     tv: "BINANCE:DOGEUSDT",
   }),
-  nvda: stock(11, "NVDA", "0x0b009227430f1a2cebcae5c6394c6c1cdecf4dc6", "NASDAQ:NVDA"),
-  spcx: stock(12, "SPCX", "0x351893c0d4452fddeae372eaf19c08f80650cef6", ""),
-  meta: stock(13, "META", "0xff00ae8921c1c0767daa60d4a9e992530d2808e4", "NASDAQ:META"),
-  coin: stock(14, "COIN", "0x17bdb6f1708bc16c80b98e9b0b6bd13a5877566e", "NASDAQ:COIN"),
-  tteq: stock(15, "TTEQ", "0xd7f166698ea8385962aa166250fcd2198ab51698", "NASDAQ:TTEQ"),
-  tsla: stock(16, "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA"),
-  googl: stock(17, "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL"),
-  aapl: stock(18, "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL"),
+  nvda: stock(11, "NVDA", "0x0b009227430f1a2cebcae5c6394c6c1cdecf4dc6", "NASDAQ:NVDA", 40685),
+  spcx: stock(12, "SPCX", "0x351893c0d4452fddeae372eaf19c08f80650cef6", "", 37068),
+  meta: stock(13, "META", "0xff00ae8921c1c0767daa60d4a9e992530d2808e4", "NASDAQ:META", 40780),
+  coin: stock(14, "COIN", "0x17bdb6f1708bc16c80b98e9b0b6bd13a5877566e", "NASDAQ:COIN", 40722),
+  tteq: stock(15, "TTEQ", "0xd7f166698ea8385962aa166250fcd2198ab51698", "NASDAQ:TTEQ", 0),
+  tsla: stock(16, "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA", 40691),
+  googl: stock(17, "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL", 40757),
+  aapl: stock(18, "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL", 40703),
 } as const;
 
 function listed(args: {
@@ -275,11 +275,11 @@ function listed(args: {
   };
 }
 
-function stock(id: number, symbol: string, feed: `0x${string}`, tv: string) {
+function stock(id: number, symbol: string, feed: `0x${string}`, tv: string, cmcId: number) {
   return listed({
     id,
     lev: 10,
-    cmcId: 0,
+    cmcId,
     category: "equities",
     label: `${symbol}-PERP`,
     pair: `${symbol}-USD`,

@@ -120,9 +120,9 @@ export function useMarketsBoard(listed: ListedMarket[] | null, range: RangeId) {
           if (!market.cmcId) return;
           try {
             const series = await fetchSeries(market, range);
-            next[market.key] = { ...series, quoteOnly: !market.extendedMarket };
+            next[market.key] = { ...series, quoteOnly: !market.extendedMarket && !market.rh };
           } catch {
-            next[market.key] = { closes: [], volume: 0, quoteOnly: !market.extendedMarket };
+            next[market.key] = { closes: [], volume: 0, quoteOnly: !market.extendedMarket && !market.rh };
           }
         }),
       );

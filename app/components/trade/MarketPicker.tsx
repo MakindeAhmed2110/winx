@@ -42,6 +42,16 @@ function readWatch(): Set<string> {
   }
 }
 
+function formatChange(change: number, changePct: number) {
+  const abs = Math.abs(change);
+  const digits = abs >= 100 ? 2 : abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  const money = abs.toLocaleString("en-US", {
+    minimumFractionDigits: digits > 2 ? 2 : 0,
+    maximumFractionDigits: digits,
+  });
+  return `${changePct >= 0 ? "+" : "−"}$${money}/${Math.abs(changePct).toFixed(2)}%`;
+}
+
 function volumeLabel(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value) || value <= 0) return "—";
   const abs = Math.abs(value);
@@ -324,13 +334,13 @@ function MarketRow({
   const m = markets[marketKey];
   const { data: stats } = useMarketStats(m.extendedMarket, 5000);
   const live = useLiveMark(m.extendedMarket);
-  const cmc = useCmcQuote(m.extendedMarket ? undefined : m.cmcId || undefined);
+  const cmc = useCmcQuote(m.cmcId || undefined);
   const rh = useRhQuote(m.extendedMarket ? "" : m.rh);
-  const price = live ?? stats?.markPrice ?? cmc.price ?? rh.price ?? undefined;
-  const change = stats?.dailyChange ?? cmc.change ?? undefined;
-  const changePct = stats?.dailyChangePct ?? cmc.changePct ?? undefined;
-  const up = change == null ? undefined : change >= 0;
-  const volume = stats?.dailyVolume ?? cmc.volume ?? rh.volume ?? undefined;
+  const price = live ?? stats?.markPrice ?? rh.price ?? cmc.price ?? undefined;
+  const change = cmc.change ?? undefined;
+  const changePct = cmc.changePct ?? undefined;
+  const up = changePct == null ? undefined : changePct >= 0;
+  const volume = stats?.dailyVolume ?? rh.volume ?? cmc.volume ?? undefined;
   const order = sortRank(sortKey, m.label, price, changePct, volume) * sortDir;
 
   return (
@@ -364,11 +374,7 @@ function MarketRow({
         className={`market-picker-cell tabular-nums ${up === true ? "is-up" : up === false ? "is-down" : ""}`}
         onClick={() => onPick(marketKey)}
       >
-        {change == null || changePct == null
-          ? "—"
-          : `${up ? "+" : "−"}$${Math.abs(change).toLocaleString("en-US", {
-              maximumFractionDigits: change >= 100 ? 0 : 2,
-            })}/${Math.abs(changePct).toFixed(2)}%`}
+        {change == null || changePct == null ? "—" : formatChange(change, changePct)}
       </button>
       <button type="button" className="market-picker-cell tabular-nums" onClick={() => onPick(marketKey)}>
         {volumeLabel(volume)}

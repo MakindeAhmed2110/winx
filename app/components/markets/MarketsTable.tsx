@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { useCmcQuotes } from "../../hooks/useCmcQuote";
 import type { LocalPosition } from "../../lib/privacy/notes";
 import type { MarketStats } from "../../lib/market-stats";
 import {
@@ -116,6 +117,7 @@ export function MarketsTable({
     key: "oi",
     dir: "desc",
   });
+  const cmc = useCmcQuotes(listed.map((market) => market.cmcId));
   const changeLabel = rangeSpec(range).changeLabel;
 
   const rows = useMemo(() => {
@@ -133,7 +135,13 @@ export function MarketsTable({
         const quote = quotes[market.key];
         const stats = quote?.stats;
         const closes = quote?.closes ?? [];
-        const move = rangeMove(closes, stats, range);
+        const cmcMove = range === "1d" ? cmc[market.cmcId] : undefined;
+        const move =
+          range === "1d"
+            ? cmcMove?.changePct != null
+              ? { change: cmcMove.change, changePct: cmcMove.changePct }
+              : { change: null, changePct: null }
+            : rangeMove(closes, stats, range);
         const premium =
           stats && stats.indexPrice > 0
             ? ((stats.markPrice - stats.indexPrice) / stats.indexPrice) * 100
@@ -181,7 +189,7 @@ export function MarketsTable({
           : left - right;
       return sort.dir === "asc" ? order : -order;
     });
-  }, [listed, quotes, query, range, sort, watchOnly, watched, positions]);
+  }, [listed, quotes, query, range, sort, watchOnly, watched, positions, cmc]);
 
   const toggle = (key: SortKey) => {
     setSort((current) =>

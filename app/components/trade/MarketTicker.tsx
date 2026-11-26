@@ -25,14 +25,14 @@ export function MarketTicker({ marketKey, onSelect, markUsd, leverage }: Props) 
   const market = markets[marketKey];
   const { data: stats } = useMarketStats(market.extendedMarket, 3000);
   const live = useLiveMark(market.extendedMarket);
-  const cmc = useCmcQuote(market.extendedMarket ? market.cmcId : undefined);
+  const cmc = useCmcQuote(market.cmcId || undefined);
   const rh = useRhQuote(market.extendedMarket ? "" : market.rh);
   const now = useNow();
   const decimals = market.priceDecimals;
 
   const mark = live ?? stats?.markPrice ?? rh.price ?? cmc.price ?? markUsd;
   const oracle = stats?.indexPrice ?? markUsd ?? rh.price ?? cmc.price ?? null;
-  const changePct = stats?.dailyChangePct ?? (market.extendedMarket ? cmc.changePct : null);
+  const changePct = cmc.changePct ?? stats?.dailyChangePct ?? null;
   const changeUp = changePct == null ? undefined : changePct >= 0;
   const funding = stats?.fundingRate;
   const fundingUp = funding == null ? undefined : funding >= 0;

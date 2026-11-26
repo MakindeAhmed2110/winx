@@ -14,6 +14,8 @@ export type CmcQuote = {
 const EMPTY: CmcQuote = { price: null, change: null, changePct: null, volume: null };
 const cache = new Map<string, { at: number; points: CmcPoint[] }>();
 const inflight = new Map<string, Promise<CmcPoint[]>>();
+const quoteCache = new Map<string, { at: number; quotes: Map<number, CmcQuote> }>();
+const quoteInflight = new Map<string, Promise<Map<number, CmcQuote>>>();
 const TTL_MS = 20_000;
 
 export function quoteFromPoints(points: CmcPoint[]): CmcQuote {
@@ -30,6 +32,73 @@ export function quoteFromPoints(points: CmcPoint[]): CmcQuote {
     changePct: (change / first) * 100,
     volume: last.volume,
   };
+}
+
+/** Dollar move implied by CoinMarketCap's 24h percent change. */
+export function changeFromPct(price: number, changePct: number): number | null {
+  if (!Number.isFinite(price) || !Number.isFinite(changePct)) return null;
+  const base = 1 + changePct / 100;
+  if (base === 0) return null;
+  return price - price / base;
+}
+
+type CmcUsdQuote = {
+  symbol?: string;
+  price?: number | null;
+  volume_24h?: number | null;
+  percent_change_24h?: number | null;
+};
+
+/** Latest CoinMarketCap quotes, including the official 24h percent change. */
+export function fetchCmcQuotes(ids: number[]): Promise<Map<number, CmcQuote>> {
+  const unique = [...new Set(ids.filter((id) => id > 0))].sort((a, b) => a - b);
+  if (unique.length === 0) return Promise.resolve(new Map());
+  const key = unique.join(",");
+  const hit = quoteCache.get(key);
+  if (hit && Date.now() - hit.at < TTL_MS) return Promise.resolve(hit.quotes);
+  const pending = quoteInflight.get(key);
+  if (pending) return pending;
+  const run = loadQuotes(unique)
+    .then((quotes) => {
+      quoteCache.set(key, { at: Date.now(), quotes });
+      return quotes;
+    })
+    .finally(() => {
+      quoteInflight.delete(key);
+    });
+  quoteInflight.set(key, run);
+  return run;
+}
+
+async function loadQuotes(ids: number[]): Promise<Map<number, CmcQuote>> {
+  const res = await fetch(
+    `/cmc-pro/public-api/v3/cryptocurrency/quotes/latest?id=${ids.join(",")}&convert=USD`,
+    { headers: { Accept: "application/json" } },
+  );
+  if (!res.ok) throw new Error(`CoinMarketCap ${res.status}`);
+  const body = (await res.json()) as {
+    data?: { id?: number; quote?: CmcUsdQuote[] }[];
+  };
+  const out = new Map<number, CmcQuote>();
+  for (const row of body.data ?? []) {
+    if (!row.id) continue;
+    const usd = row.quote?.find((quote) => quote.symbol === "USD") ?? row.quote?.[0];
+    if (!usd) continue;
+    const price = finiteOrNull(usd.price);
+    const changePct = finiteOrNull(usd.percent_change_24h);
+    const volume = finiteOrNull(usd.volume_24h);
+    out.set(row.id, {
+      price,
+      changePct,
+      change: price != null && changePct != null ? changeFromPct(price, changePct) : null,
+      volume,
+    });
+  }
+  return out;
+}
+
+function finiteOrNull(value: number | null | undefined): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
 }
 
 /** Public CoinMarketCap chart. Same payload the site uses, through our proxy. */
