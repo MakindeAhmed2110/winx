@@ -32,7 +32,13 @@ export async function sendTimedClose(args: {
       gas: args.gas.toString(),
     }),
   });
-  const json = (await res.json()) as { ok?: boolean; hash?: `0x${string}`; error?: string };
+  const text = await res.text();
+  let json: { ok?: boolean; hash?: `0x${string}`; error?: string };
+  try {
+    json = JSON.parse(text) as { ok?: boolean; hash?: `0x${string}`; error?: string };
+  } catch {
+    throw new Error("Close server failed to start. The close was not sent.");
+  }
   if (!res.ok || !json.ok || !json.hash) {
     throw new Error(json.error || "Close missed the block. Tap Close again.");
   }

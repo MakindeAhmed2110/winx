@@ -22,7 +22,15 @@ import {
   type PublicClient,
 } from "viem";
 import { erc20Abi, engineAbi, oracleAbi, vaultAbi } from "../lib/abis";
-import { addresses, explorerTx, markets, robinhoodTestnet } from "../lib/config";
+import {
+  addresses,
+  explorerTx,
+  feedForMarketId,
+  markets,
+  robinhoodTestnet,
+  type MarketKey,
+} from "../lib/config";
+import { useCmcQuote } from "./useCmcQuote";
 import { formatUsdw } from "../lib/format";
 import { handoffPosition } from "../lib/keeper";
 import {
@@ -165,7 +173,7 @@ async function findLiveMarginNote(
 }
 
 export type TradeStatus = { kind: "idle" | "work" | "ok" | "err"; text: string };
-export type MarketKey = "btc" | "eth";
+export type { MarketKey };
 
 function feedId(feed: `0x${string}`): `0x${string}` {
   return pad(feed, { size: 32 });
@@ -208,18 +216,20 @@ export function useTradeDesk() {
   const [privyAddress, setPrivyAddress] = useState<`0x${string}` | undefined>();
   const address = privyAddress ?? (isDirectWallet(wagmiAddress) ? wagmiAddress : undefined);
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const marketParam = searchParams.get("market");
   const [marketKey, setMarketKey] = useState<MarketKey>(
-    marketParam === "eth" ? "eth" : "btc",
+    marketParam != null && marketParam in markets ? (marketParam as MarketKey) : "btc",
   );
   const [isLong, setIsLong] = useState(true);
   const [leverage, setLeverage] = useState(40);
 
   useEffect(() => {
-    if (marketParam !== "btc" && marketParam !== "eth") return;
-    setMarketKey(marketParam);
-    setLeverage(markets[marketParam].maxLeverage);
+    if (marketParam == null || !(marketParam in markets)) return;
+    const key = marketParam as MarketKey;
+    setMarketKey(key);
+    const max = markets[key].maxLeverage;
+    if (max > 0) setLeverage(max);
   }, [marketParam]);
   const [orderType, setOrderType] = useState<"market" | "limit" | "trigger">("market");
   const [sizeUsd, setSizeUsd] = useState("400");
@@ -237,7 +247,7 @@ export function useTradeDesk() {
   }, []);
 
   const market = markets[marketKey];
-  const feed = marketKey === "btc" ? addresses.btcFeed : addresses.ethFeed;
+  const feed = market.feed;
 
   const refreshLocal = useCallback(() => {
     const s = loadStore();
@@ -374,11 +384,13 @@ export function useTradeDesk() {
     abi: oracleAbi,
     functionName: "getPrice",
     args: [feedId(feed)],
-    query: { refetchInterval: 12_000 },
+    query: { refetchInterval: 12_000, enabled: markets[marketKey].tradable },
   });
 
+  const cmc = useCmcQuote(markets[marketKey].cmcId);
   const markPrice = oraclePrice(mark) ?? undefined;
-  const markUsd = markPrice != null ? Number(markPrice) / 1e8 : null;
+  const chainUsd = markPrice != null ? Number(markPrice) / 1e8 : null;
+  const markUsd = markets[marketKey].tradable ? chainUsd : cmc.price;
 
   useEffect(() => {
     if (!address || !publicClient) {
@@ -662,18 +674,20 @@ export function useTradeDesk() {
   const refreshSettlementMark = useCallback(
     async (marketId?: number) => {
       if (!publicClient) throw new Error("RPC not ready — cannot refresh mark");
-      const feedAddr = marketId === 2 ? addresses.ethFeed : addresses.btcFeed;
-      const updatedAt = await settlementUpdatedAt(
-        (args) => publicClient.readContract(args),
-        feedAddr,
-      );
-      if (updatedAt != null) {
+      const feedAddr = feedForMarketId(marketId ?? 1);
+      const fresh = async () => {
+        const updatedAt = await settlementUpdatedAt(
+          (args) => publicClient.readContract(args),
+          feedAddr,
+        );
+        if (updatedAt == null) return false;
         const block = await publicClient.getBlock();
-        if (block.timestamp - updatedAt < 30n) return;
-      }
+        return block.timestamp - updatedAt < 30n;
+      };
+      if (await fresh()) return;
       setStatus({ kind: "work", text: "Refreshing live settlement mark…" });
       const synced = await requestKeeperMarkSync();
-      if (synced) return;
+      if (synced && (await fresh())) return;
       await syncAggregatorMarks({
         marketId,
         writeContractAsync: (args) => writeContractAsync(args),
@@ -709,8 +723,7 @@ export function useTradeDesk() {
 
         await refreshSettlementMark(pos.marketId);
 
-        const feed =
-          pos.marketId === 1 ? feedId(addresses.btcFeed) : feedId(addresses.ethFeed);
+        const feed = feedId(feedForMarketId(pos.marketId));
 
         for (let attempt = 0; attempt < 3; attempt++) {
         let proved: Awaited<ReturnType<typeof proveClose>> | null = null;
@@ -875,7 +888,7 @@ export function useTradeDesk() {
         return;
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
-          const permanent = /relayer is low|not configured|Only a close/i.test(message);
+          const permanent = /relayer is low|not configured|Only a close|server failed/i.test(message);
           if (proved) {
             const still = await publicClient
               .readContract({
@@ -926,6 +939,13 @@ export function useTradeDesk() {
   );
 
   const onOpen = useCallback(async () => {
+    if (!market.tradable) {
+      setStatus({
+        kind: "err",
+        text: `${market.label} is on the board for price only. BTC-PERP and ETH-PERP are the markets you can trade.`,
+      });
+      return;
+    }
     if (!(await ensureSigner()) || !address || !publicClient) return;
     let shieldConfirmed = false;
     try {
@@ -1248,8 +1268,10 @@ export function useTradeDesk() {
 
   const selectMarket = useCallback((key: MarketKey) => {
     setMarketKey(key);
-    setLeverage(markets[key].maxLeverage);
-  }, []);
+    setSearchParams({ market: key }, { replace: true });
+    const max = markets[key].maxLeverage;
+    if (max > 0) setLeverage(max);
+  }, [setSearchParams]);
 
   return {
     address,

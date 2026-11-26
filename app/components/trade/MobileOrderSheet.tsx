@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCmcQuote } from "../../hooks/useCmcQuote";
 import { useLiveMark } from "../../hooks/use-live-mark";
+import { useRhQuote } from "../../hooks/useRhQuote";
 import { formatUsd, formatUsdw } from "../../lib/format";
 import type { TradeDeskState } from "../../hooks/useTradeDesk";
 import { LeverageSlider } from "./LeverageSlider";
@@ -35,7 +37,9 @@ export function MobileOrderSheet({
   } = desk;
 
   const live = useLiveMark(market.extendedMarket);
-  const px = live ?? markUsd;
+  const cmc = useCmcQuote(market.extendedMarket ? undefined : market.cmcId || undefined);
+  const rh = useRhQuote(market.extendedMarket ? "" : market.rh);
+  const px = live ?? rh.price ?? markUsd ?? cmc.price;
   const [step, setStep] = useState<Step>("ticket");
   const [keypad, setKeypad] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
@@ -209,14 +213,20 @@ export function MobileOrderSheet({
             </button>
 
             <div className="sheet-leverage">
-              <LeverageSlider value={leverage} min={1} max={market.maxLeverage} onChange={setLeverage} />
+              {market.tradable ? (
+                <LeverageSlider value={leverage} min={1} max={market.maxLeverage} onChange={setLeverage} />
+              ) : (
+                <p className="sheet-soon">Price market. BTC and ETH are the pairs you can trade.</p>
+              )}
             </div>
 
             <div className="sheet-rows">
-              <div>
-                <span>Leverage</span>
-                <b>Isolated {leverage}x</b>
-              </div>
+              {market.tradable ? (
+                <div>
+                  <span>Leverage</span>
+                  <b>Isolated {leverage}x</b>
+                </div>
+              ) : null}
               <div>
                 <span>
                   Est. margin required <i>?</i>
@@ -252,13 +262,13 @@ export function MobileOrderSheet({
             <button
               type="button"
               className="sheet-review"
-              disabled={orderType !== "market" || margin <= 0}
+              disabled={!market.tradable || orderType !== "market" || margin <= 0}
               onClick={() => {
                 setKeypad(false);
                 setStep("review");
               }}
             >
-              {orderType === "market" ? "Review" : "Coming soon"}
+              {!market.tradable ? "Price only" : orderType === "market" ? "Review" : "Coming soon"}
             </button>
 
             {keypad ? (

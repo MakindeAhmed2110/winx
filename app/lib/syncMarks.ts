@@ -85,11 +85,30 @@ async function mainnetAnswerIfFresh(mainnetFeed: `0x${string}`): Promise<bigint 
   }
 }
 
-/** Live settlement answer: fresh mainnet Chainlink, else Extended. */
+const ZERO_FEED = "0x0000000000000000000000000000000000000000";
+
+async function robinhoodAnswer(symbol: string): Promise<bigint> {
+  const res = await fetch(`/rhj/prices/${symbol}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Robinhood HTTP ${res.status}`);
+  const body = (await res.json()) as {
+    quotes?: { tokenBid?: string; tokenAsk?: string }[];
+  };
+  const quote = body.quotes?.[0];
+  const bid = Number(quote?.tokenBid);
+  const ask = Number(quote?.tokenAsk);
+  const mid = (bid + ask) / 2;
+  if (!Number.isFinite(mid) || mid <= 0) throw new Error(`No Robinhood mark for ${symbol}`);
+  return toAnswer1e8(mid);
+}
+
+/** Live settlement answer: fresh mainnet Chainlink, else the market's own source. */
 async function liveAnswer(pair: MarkFeedPair): Promise<bigint> {
-  const fromCl = await mainnetAnswerIfFresh(pair.mainnet);
-  if (fromCl != null) return fromCl;
-  const extMarket = EXTENDED_BY_KEY[pair.key];
+  if (pair.rh) return robinhoodAnswer(pair.rh);
+  if (pair.mainnet && pair.mainnet !== ZERO_FEED) {
+    const fromCl = await mainnetAnswerIfFresh(pair.mainnet);
+    if (fromCl != null) return fromCl;
+  }
+  const extMarket = pair.extended || EXTENDED_BY_KEY[pair.key];
   if (!extMarket) throw new Error(`no live source for ${pair.key}`);
   return extendedAnswer(extMarket);
 }

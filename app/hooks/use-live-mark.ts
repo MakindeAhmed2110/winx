@@ -131,7 +131,11 @@ export function useLiveMark(market: string | undefined): number | null {
   const [price, setPrice] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!market) return;
+    if (!market) {
+      setPrice(null);
+      return;
+    }
+    setPrice(null);
     return subscribe(market, setPrice);
   }, [market]);
 

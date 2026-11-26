@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm build && node scripts/bundle-api.mjs",
   "outputDirectory": "build/client",
   "rewrites": [
     {
@@ -14,6 +14,14 @@
     {
       "source": "/rh-mainnet/:path*",
       "destination": "https://rpc.mainnet.chain.robinhood.com/:path*"
+    },
+    {
+      "source": "/cmc/:path*",
+      "destination": "https://api.coinmarketcap.com/:path*"
+    },
+    {
+      "source": "/rhj/:path*",
+      "destination": "https://api.robinhood.com/rhj/:path*"
     },
     {
       "source": "/(.*)",

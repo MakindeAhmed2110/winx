@@ -1664,6 +1664,65 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   object-fit: cover;
 }
 
+.market-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  flex-shrink: 0;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.cmc-ranges {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+}
+
+.cmc-ranges button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 7px;
+  cursor: pointer;
+}
+
+.cmc-ranges button.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.cmc-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cmc-last {
+  position: absolute;
+  right: 8px;
+  z-index: 2;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  background: #10edbf;
+  color: #06241e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  pointer-events: none;
+}
+
 .trade-pair-title {
   font-family: var(--font-display);
   font-size: 16px;

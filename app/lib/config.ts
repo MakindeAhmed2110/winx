@@ -47,6 +47,8 @@ export type MarkFeedPair = {
   marketId: number;
   mainnet: `0x${string}`;
   testnet: `0x${string}`;
+  extended?: string;
+  rh?: string;
 };
 
 function optionalMarkPair(
@@ -60,7 +62,7 @@ function optionalMarkPair(
   return { key, marketId, mainnet, testnet };
 }
 
-export const markFeedPairs: MarkFeedPair[] = [
+const listedMarkPairs: MarkFeedPair[] = [
   {
     key: "btc",
     marketId: Number(import.meta.env.VITE_MARKET_BTC || 1),
@@ -92,27 +94,228 @@ export const markFeedPairs: MarkFeedPair[] = [
   ).filter((p): p is MarkFeedPair => p != null),
 ];
 
+/**
+ * Every row settles on the engine. BTC and ETH keep their original feeds.
+ * The rest were listed with their own AggregatorV3 mirrors.
+ */
 export const markets = {
   btc: {
     id: Number(import.meta.env.VITE_MARKET_BTC || 1),
+    tradable: true,
+    category: "crypto" as const,
+    cmcId: 1,
     maxLeverage: 40,
     label: "BTC-PERP",
     pair: "BTC-USD",
     icon: "/assets/btc.svg",
-    /** Extended public book / trades market (UI only — settlement uses mainnet). */
+    /** Extended public book / trades market. Settlement uses the testnet feed. */
     extendedMarket: "BTC-USD",
     priceDecimals: 0,
+    feed: addresses.btcFeed,
+    tv: "BINANCE:BTCUSDT",
+    rh: "",
   },
   eth: {
     id: Number(import.meta.env.VITE_MARKET_ETH || 2),
+    tradable: true,
+    category: "crypto" as const,
+    cmcId: 1027,
     maxLeverage: 30,
     label: "ETH-PERP",
     pair: "ETH-USD",
     icon: "/assets/eth.svg",
     extendedMarket: "ETH-USD",
     priceDecimals: 2,
+    feed: addresses.ethFeed,
+    tv: "BINANCE:ETHUSDT",
+    rh: "",
   },
+  bnb: listed({
+    id: 3,
+    lev: 40,
+    cmcId: 1839,
+    category: "crypto",
+    label: "BNB-PERP",
+    pair: "BNB-USD",
+    decimals: 2,
+    icon: "/assets/bnb.png",
+    extended: "BNB-USD",
+    feed: "0xf102995e7c8a734afb233695ae2f087cd3592673",
+    tv: "BINANCE:BNBUSDT",
+  }),
+  xrp: listed({
+    id: 4,
+    lev: 30,
+    cmcId: 52,
+    category: "crypto",
+    label: "XRP-PERP",
+    pair: "XRP-USD",
+    decimals: 4,
+    icon: "/assets/xrp.png",
+    extended: "XRP-USD",
+    feed: "0xe20eaa6c23ad12b6098419a47cd8d3fb33074e8a",
+    tv: "BINANCE:XRPUSDT",
+  }),
+  sol: listed({
+    id: 5,
+    lev: 50,
+    cmcId: 5426,
+    category: "crypto",
+    label: "SOL-PERP",
+    pair: "SOL-USD",
+    decimals: 2,
+    icon: "/assets/sol.png",
+    extended: "SOL-USD",
+    feed: "0x484a3059926254d6530fa081ea36eb6b9aba9a37",
+    tv: "BINANCE:SOLUSDT",
+  }),
+  trx: listed({
+    id: 6,
+    lev: 30,
+    cmcId: 1958,
+    category: "crypto",
+    label: "TRX-PERP",
+    pair: "TRX-USD",
+    decimals: 4,
+    icon: "/assets/trx.png",
+    extended: "TRX-USD",
+    feed: "0xb30f901585c963bb14b1b396f530344fca357608",
+    tv: "BINANCE:TRXUSDT",
+  }),
+  hype: listed({
+    id: 7,
+    lev: 30,
+    cmcId: 32196,
+    category: "crypto",
+    label: "HYPE-PERP",
+    pair: "HYPE-USD",
+    decimals: 2,
+    icon: "/assets/hype.png",
+    extended: "HYPE-USD",
+    feed: "0xa68974da343520dd9154c41c62a5f4fd088eb91c",
+    tv: "BINANCE:HYPEUSDT",
+  }),
+  zec: listed({
+    id: 8,
+    lev: 30,
+    cmcId: 1437,
+    category: "crypto",
+    label: "ZEC-PERP",
+    pair: "ZEC-USD",
+    decimals: 2,
+    icon: "/assets/zec.png",
+    extended: "ZEC-USD",
+    feed: "0x2b6a9e3885ae9ed4ff3462ad970b960588be5a21",
+    tv: "BINANCE:ZECUSDT",
+  }),
+  xmr: listed({
+    id: 9,
+    lev: 30,
+    cmcId: 328,
+    category: "crypto",
+    label: "XMR-PERP",
+    pair: "XMR-USD",
+    decimals: 2,
+    icon: "/assets/xmr.png",
+    extended: "XMR-USD",
+    feed: "0xd00dcb8212f6645facdef9b6d410e5430f01f23e",
+    tv: "KUCOIN:XMRUSDT",
+  }),
+  doge: listed({
+    id: 10,
+    lev: 30,
+    cmcId: 74,
+    category: "crypto",
+    label: "DOGE-PERP",
+    pair: "DOGE-USD",
+    decimals: 5,
+    icon: "/assets/doge.png",
+    extended: "DOGE-USD",
+    feed: "0xda60fb0fdf6879e62d342e77e6400804ca06f124",
+    tv: "BINANCE:DOGEUSDT",
+  }),
+  nvda: stock(11, "NVDA", "0x0b009227430f1a2cebcae5c6394c6c1cdecf4dc6", "NASDAQ:NVDA"),
+  spcx: stock(12, "SPCX", "0x351893c0d4452fddeae372eaf19c08f80650cef6", ""),
+  meta: stock(13, "META", "0xff00ae8921c1c0767daa60d4a9e992530d2808e4", "NASDAQ:META"),
+  coin: stock(14, "COIN", "0x17bdb6f1708bc16c80b98e9b0b6bd13a5877566e", "NASDAQ:COIN"),
+  tteq: stock(15, "TTEQ", "0xd7f166698ea8385962aa166250fcd2198ab51698", "NASDAQ:TTEQ"),
+  tsla: stock(16, "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA"),
+  googl: stock(17, "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL"),
+  aapl: stock(18, "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL"),
 } as const;
+
+function listed(args: {
+  id: number;
+  lev: number;
+  cmcId: number;
+  category: "crypto" | "equities";
+  label: string;
+  pair: string;
+  decimals: number;
+  icon: string;
+  extended: string;
+  feed: `0x${string}`;
+  tv: string;
+  rh?: string;
+}) {
+  return {
+    id: args.id,
+    tradable: true,
+    category: args.category,
+    cmcId: args.cmcId,
+    maxLeverage: args.lev,
+    label: args.label,
+    pair: args.pair,
+    icon: args.icon,
+    extendedMarket: args.extended,
+    priceDecimals: args.decimals,
+    feed: args.feed,
+    tv: args.tv,
+    rh: args.rh ?? "",
+  };
+}
+
+function stock(id: number, symbol: string, feed: `0x${string}`, tv: string) {
+  return listed({
+    id,
+    lev: 10,
+    cmcId: 0,
+    category: "equities",
+    label: `${symbol}-PERP`,
+    pair: `${symbol}-USD`,
+    decimals: 2,
+    icon: `/assets/stocks/${symbol.toLowerCase()}.${symbol === "TTEQ" ? "svg" : "png"}`,
+    extended: "",
+    feed,
+    tv,
+    rh: symbol,
+  });
+}
+
+const ZERO_FEED = "0x0000000000000000000000000000000000000000" as const;
+
+export const markFeedPairs: MarkFeedPair[] = [
+  ...listedMarkPairs,
+  ...((Object.entries(markets) as [string, (typeof markets)[MarketKey]][]) 
+    .filter(([, market]) => market.id > 2)
+    .map(([key, market]) => ({
+      key,
+      marketId: market.id,
+      mainnet: ZERO_FEED,
+      testnet: market.feed,
+      extended: market.extendedMarket || undefined,
+      rh: market.rh || undefined,
+    }))),
+];
+
+export type MarketKey = keyof typeof markets;
+
+export function feedForMarketId(marketId: number): `0x${string}` {
+  const row = (Object.values(markets) as (typeof markets)[MarketKey][]).find(
+    (market) => market.id === marketId,
+  );
+  return row?.feed ?? addresses.btcFeed;
+}
 
 export const explorerTx = (hash: string) =>
   `${import.meta.env.VITE_EXPLORER_URL || "https://explorer.testnet.chain.robinhood.com"}/tx/${hash}`;

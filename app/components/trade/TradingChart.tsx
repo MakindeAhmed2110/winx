@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { markets } from "../../lib/config";
 import type { MarketKey } from "../../hooks/useTradeDesk";
 
 declare global {
@@ -8,11 +9,6 @@ declare global {
     };
   }
 }
-
-const SYMBOLS: Record<MarketKey, string> = {
-  btc: "BINANCE:BTCUSDT",
-  eth: "BINANCE:ETHUSDT",
-};
 
 let tvScriptPromise: Promise<void> | null = null;
 
@@ -39,16 +35,21 @@ function loadTradingView(): Promise<void> {
 
 export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const idRef = useRef(`tv_${marketKey}_${Math.random().toString(36).slice(2, 9)}`);
 
   useEffect(() => {
     let cancelled = false;
     const host = containerRef.current;
+    const symbol = markets[marketKey].tv;
     if (!host) return;
+    if (!symbol) {
+      host.innerHTML = "";
+      return;
+    }
 
+    const mountId = `tv_${marketKey}_${Math.random().toString(36).slice(2, 9)}`;
     host.innerHTML = "";
     const mount = document.createElement("div");
-    mount.id = idRef.current;
+    mount.id = mountId;
     mount.style.height = "100%";
     mount.style.width = "100%";
     host.appendChild(mount);
@@ -59,7 +60,7 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
         // eslint-disable-next-line no-new
         new window.TradingView.widget({
           autosize: true,
-          symbol: SYMBOLS[marketKey],
+          symbol,
           interval: "60",
           timezone: "Etc/UTC",
           theme: "dark",
@@ -67,7 +68,6 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
           locale: "en",
           toolbar_bg: "#000000",
           enable_publishing: false,
-          // Top interval / indicators bar off; drawing tools on the left
           hide_top_toolbar: true,
           hide_side_toolbar: false,
           hide_legend: true,
@@ -77,7 +77,7 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
           hotlist: false,
           calendar: false,
           save_image: false,
-          container_id: idRef.current,
+          container_id: mountId,
           backgroundColor: "#000000",
           gridColor: "rgba(255, 255, 255, 0.1)",
           studies_overrides: {},
@@ -112,7 +112,6 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
             "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
             "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
             "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
-            // Last-price line (both naming variants — free widget is picky)
             "mainSeriesProperties.showPriceLine": true,
             "mainSeriesProperties.priceLineVisible": true,
             "mainSeriesProperties.priceLineWidth": 1,

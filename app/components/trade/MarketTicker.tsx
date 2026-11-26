@@ -6,9 +6,11 @@ import {
   formatUsd,
 } from "../../lib/format";
 import type { MarketKey } from "../../hooks/useTradeDesk";
+import { useCmcQuote } from "../../hooks/useCmcQuote";
 import { useLiveMark } from "../../hooks/use-live-mark";
 import { useMarketStats } from "../../hooks/use-market-stats";
 import { useNow } from "../../hooks/use-poll";
+import { useRhQuote } from "../../hooks/useRhQuote";
 import { MarketPicker } from "./MarketPicker";
 
 type Props = {
@@ -19,16 +21,18 @@ type Props = {
   leverage?: number;
 };
 
-export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
+export function MarketTicker({ marketKey, onSelect, markUsd, leverage }: Props) {
   const market = markets[marketKey];
   const { data: stats } = useMarketStats(market.extendedMarket, 3000);
   const live = useLiveMark(market.extendedMarket);
+  const cmc = useCmcQuote(market.extendedMarket ? market.cmcId : undefined);
+  const rh = useRhQuote(market.extendedMarket ? "" : market.rh);
   const now = useNow();
   const decimals = market.priceDecimals;
 
-  const mark = live ?? stats?.markPrice ?? null;
-  const oracle = stats?.indexPrice ?? null;
-  const changePct = stats?.dailyChangePct;
+  const mark = live ?? stats?.markPrice ?? rh.price ?? cmc.price ?? markUsd;
+  const oracle = stats?.indexPrice ?? markUsd ?? rh.price ?? cmc.price ?? null;
+  const changePct = stats?.dailyChangePct ?? (market.extendedMarket ? cmc.changePct : null);
   const changeUp = changePct == null ? undefined : changePct >= 0;
   const funding = stats?.fundingRate;
   const fundingUp = funding == null ? undefined : funding >= 0;
@@ -42,7 +46,7 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
       <div className="trade-ticker-pair flex min-w-0 items-center justify-between gap-3">
         <div className="trade-ticker-id flex min-w-0 flex-col items-start gap-[5px]">
           <MarketPicker marketKey={marketKey} onSelect={onSelect} />
-          {leverage != null ? (
+          {market.maxLeverage > 0 && leverage != null ? (
             <span className="trade-pair-lev lg:hidden">{leverage}x</span>
           ) : null}
         </div>
@@ -75,7 +79,10 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
             value={formatPct(changePct, 2, true)}
             tone={changeUp === true ? "up" : changeUp === false ? "down" : undefined}
           />
-          <TickerStat label="24h volume" value={formatCompactUsd(stats?.dailyVolume)} />
+          <TickerStat
+            label="24h volume"
+            value={formatCompactUsd(stats?.dailyVolume ?? rh.volume ?? cmc.volume)}
+          />
           <TickerStat
             label="Open interest"
             value={formatCompactUsd(stats?.openInterest)}

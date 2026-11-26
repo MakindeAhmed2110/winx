@@ -2,6 +2,7 @@ import { formatCompactUsd, formatPct } from "../../lib/format";
 import { heatStyle, treemap, type ListedMarket } from "../../lib/markets-board";
 import type { MarketStats } from "../../lib/market-stats";
 import { Link } from "react-router";
+import { MarketIcon } from "../trade/MarketIcon";
 
 type Props = {
   listed: ListedMarket[];
@@ -59,7 +60,7 @@ export function MarketsHeatmap({ listed, quotes, moves }: Props) {
                 color: tone.ink,
               }}
             >
-              <img src={market.icon} alt="" width={compact ? 18 : 36} height={compact ? 18 : 36} />
+              <MarketIcon symbol={market.symbol} icon={market.icon} size={compact ? 18 : 36} />
               <strong>{market.symbol}</strong>
               <span>{move == null ? "—" : `${move >= 0 ? "+" : ""}${move.toFixed(2)}%`}</span>
             </Link>

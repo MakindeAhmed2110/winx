@@ -7,7 +7,6 @@ import {
   formatUnits,
   parseEther,
   parseUnits,
-  type PublicClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { defineChain } from "viem";
@@ -20,7 +19,7 @@ const FAUCET_TIP = 1_000_000_000n;
 /** ETH transfer + ERC-20 transfer gas so the drop is not stranded. */
 const FAUCET_GAS_RESERVE = (10_000_000_000n + FAUCET_TIP) * (21_000n + 80_000n);
 
-async function faucetGasPrice(publicClient: PublicClient): Promise<bigint> {
+async function faucetGasPrice(publicClient: ReadClient): Promise<bigint> {
   const block = await publicClient.getBlock();
   return (block.baseFeePerGas ?? 0n) + FAUCET_TIP;
 }
@@ -103,7 +102,7 @@ function faucetClient() {
 }
 
 async function logsInRange(
-  client: PublicClient,
+  client: ReadClient,
   token: `0x${string}`,
   from: `0x${string}`,
   to: `0x${string}`,
@@ -130,7 +129,7 @@ async function logsInRange(
 
 /** Latest faucet USDW transfer to this address, in ms, or null if none in the window. */
 async function lastClaimMs(
-  client: PublicClient,
+  client: ReadClient,
   admin: `0x${string}`,
   recipient: `0x${string}`,
 ): Promise<number | null> {
@@ -195,7 +194,9 @@ export function withFaucetSenderLock<T>(fn: () => Promise<T>): Promise<T> {
   return withSenderLock(fn);
 }
 
-async function nextNonce(publicClient: PublicClient, address: `0x${string}`): Promise<bigint> {
+type ReadClient = ReturnType<typeof createPublicClient>;
+
+async function nextNonce(publicClient: ReadClient, address: `0x${string}`): Promise<bigint> {
   const [pending, latest] = await Promise.all([
     publicClient.getTransactionCount({ address, blockTag: "pending" }),
     publicClient.getTransactionCount({ address, blockTag: "latest" }),
@@ -211,7 +212,7 @@ function nonceTooLow(error: unknown): bigint | undefined {
 }
 
 async function sendAtNonce<T>(
-  publicClient: PublicClient,
+  publicClient: ReadClient,
   address: `0x${string}`,
   send: (nonce: bigint) => Promise<T>,
 ): Promise<T> {

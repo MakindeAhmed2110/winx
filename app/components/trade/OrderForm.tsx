@@ -2,6 +2,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { usePrivyStatus } from "../auth/privy-status";
 import { formatUsdw } from "../../lib/format";
 import { useLiveMark } from "../../hooks/use-live-mark";
+import { useRhQuote } from "../../hooks/useRhQuote";
 import type { TradeDeskState } from "../../hooks/useTradeDesk";
 import { LeverageSlider } from "./LeverageSlider";
 
@@ -29,7 +30,8 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
   } = desk;
 
   const live = useLiveMark(market.extendedMarket);
-  const px = live ?? markUsd;
+  const rh = useRhQuote(market.extendedMarket ? "" : market.rh);
+  const px = live ?? rh.price ?? markUsd;
   const marginUsd = Number(sizeUsd) || 0;
   const notional = marginUsd * leverage;
   const liqApprox =
@@ -94,12 +96,16 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
               {address ? `${usdwDisplay} USDW` : "—"}
             </span>
           </div>
-          <LeverageSlider
-            value={leverage}
-            min={1}
-            max={market.maxLeverage}
-            onChange={setLeverage}
-          />
+          {market.tradable ? (
+            <LeverageSlider
+              value={leverage}
+              min={1}
+              max={market.maxLeverage}
+              onChange={setLeverage}
+            />
+          ) : (
+            <p className="text-fog">Price market. Trading opens when this pair is listed on the engine.</p>
+          )}
         </div>
 
         <div className="space-y-1">
@@ -120,6 +126,7 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
           canSign={canSign}
           needsNetworkSwitch={needsNetworkSwitch}
           busy={busy}
+          quoteOnly={!market.tradable}
           onOpen={onOpen}
           onSwitchNetwork={ensureNetwork}
         />
@@ -179,6 +186,7 @@ function PlaceOrderButton({
   canSign,
   needsNetworkSwitch,
   busy,
+  quoteOnly,
   onOpen,
   onSwitchNetwork,
 }: {
@@ -186,10 +194,14 @@ function PlaceOrderButton({
   canSign: boolean;
   needsNetworkSwitch: boolean;
   busy: boolean;
+  quoteOnly: boolean;
   onOpen: () => void | Promise<void>;
   onSwitchNetwork: () => Promise<boolean>;
 }) {
   const status = usePrivyStatus();
+  if (quoteOnly) {
+    return <OrderButton canTrade={false} busy={busy} onClick={onOpen} label="Price only" />;
+  }
   if (status !== "ready") {
     return (
       <OrderButton canTrade={false} busy={busy} onClick={onOpen} label="Place order" />

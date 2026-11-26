@@ -2,8 +2,11 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { markets } from "../../lib/config";
 import { formatUsd } from "../../lib/format";
 import type { MarketKey } from "../../hooks/useTradeDesk";
+import { useCmcQuote } from "../../hooks/useCmcQuote";
+import { useRhQuote } from "../../hooks/useRhQuote";
 import { useLiveMark } from "../../hooks/use-live-mark";
 import { useMarketStats } from "../../hooks/use-market-stats";
+import { MarketIcon } from "./MarketIcon";
 
 type Props = {
   marketKey: MarketKey;
@@ -26,11 +29,6 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 type SortKey = "market" | "price" | "change" | "volume";
 
-const CATEGORY: Record<string, Exclude<TabId, "watch" | "all" | "new">> = {
-  btc: "crypto",
-  eth: "crypto",
-};
-
 const MARKET_KEYS = Object.keys(markets) as MarketKey[];
 
 function readWatch(): Set<string> {
@@ -48,7 +46,13 @@ function volumeLabel(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value) || value <= 0) return "—";
   const abs = Math.abs(value);
   const scaled =
-    abs >= 1e9 ? `${(abs / 1e9).toFixed(1)}B` : abs >= 1e6 ? `${(abs / 1e6).toFixed(0)}M` : abs.toFixed(0);
+    abs >= 1e9
+      ? `${(abs / 1e9).toFixed(1)}B`
+      : abs >= 1e6
+        ? `${(abs / 1e6).toFixed(abs >= 10e6 ? 0 : 1)}M`
+        : abs >= 1e3
+          ? `${(abs / 1e3).toFixed(0)}K`
+          : abs.toFixed(0);
   return `$${scaled}`;
 }
 
@@ -69,8 +73,9 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
     return MARKET_KEYS.filter((k) => {
       const m = markets[k];
       if (tab === "watch" && !watched.has(k)) return false;
-      if (tab === "new") return false;
-      if (tab !== "all" && tab !== "watch" && CATEGORY[k] !== tab) return false;
+      if (tab === "new" || tab === "commodities" || tab === "indices") return false;
+      if ((tab === "equities" || tab === "xstocks") && markets[k].category !== "equities") return false;
+      if (tab === "crypto" && markets[k].category !== "crypto") return false;
       if (!q) return true;
       return (
         m.pair.toLowerCase().includes(q) ||
@@ -138,7 +143,12 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
         aria-controls={listId}
         onClick={() => setOpen((v) => !v)}
       >
-        <img src={market.icon} alt="" className="trade-pair-icon" width={28} height={28} />
+        <MarketIcon
+          symbol={market.pair.split("-")[0] ?? ""}
+          icon={market.icon}
+          size={28}
+          className="trade-pair-icon"
+        />
         <span className="trade-pair-title">{market.pair}</span>
         <span className="trade-pair-badge">Perp</span>
         <span className="trade-pair-caret" aria-hidden />
@@ -314,11 +324,14 @@ function MarketRow({
   const m = markets[marketKey];
   const { data: stats } = useMarketStats(m.extendedMarket, 5000);
   const live = useLiveMark(m.extendedMarket);
-  const price = live ?? stats?.markPrice ?? stats?.lastPrice;
-  const change = stats?.dailyChange;
-  const changePct = stats?.dailyChangePct;
+  const cmc = useCmcQuote(m.extendedMarket ? undefined : m.cmcId || undefined);
+  const rh = useRhQuote(m.extendedMarket ? "" : m.rh);
+  const price = live ?? stats?.markPrice ?? cmc.price ?? rh.price ?? undefined;
+  const change = stats?.dailyChange ?? cmc.change ?? undefined;
+  const changePct = stats?.dailyChangePct ?? cmc.changePct ?? undefined;
   const up = change == null ? undefined : change >= 0;
-  const order = sortRank(sortKey, m.label, price, changePct, stats?.dailyVolume) * sortDir;
+  const volume = stats?.dailyVolume ?? cmc.volume ?? rh.volume ?? undefined;
+  const order = sortRank(sortKey, m.label, price, changePct, volume) * sortDir;
 
   return (
     <div
@@ -338,9 +351,9 @@ function MarketRow({
           <StarIcon filled={watched} />
         </button>
         <button type="button" className="market-picker-select" onClick={() => onPick(marketKey)}>
-          <img src={m.icon} alt="" width={22} height={22} />
+          <MarketIcon symbol={m.pair.split("-")[0] ?? ""} icon={m.icon} size={22} />
           <span className="market-picker-pair">{m.label}</span>
-          <span className="market-picker-lev">{m.maxLeverage}X</span>
+          {m.maxLeverage > 0 ? <span className="market-picker-lev">{m.maxLeverage}X</span> : null}
         </button>
       </div>
       <button type="button" className="market-picker-cell tabular-nums" onClick={() => onPick(marketKey)}>
@@ -358,7 +371,7 @@ function MarketRow({
             })}/${Math.abs(changePct).toFixed(2)}%`}
       </button>
       <button type="button" className="market-picker-cell tabular-nums" onClick={() => onPick(marketKey)}>
-        {volumeLabel(stats?.dailyVolume)}
+        {volumeLabel(volume)}
       </button>
     </div>
   );

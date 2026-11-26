@@ -101,6 +101,21 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (path) => path.replace(/^\/rh-mainnet/, ""),
         },
+        "/rhj": {
+          target: "https://api.robinhood.com",
+          changeOrigin: true,
+          secure: true,
+        },
+        "/cmc": {
+          target: "https://api.coinmarketcap.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/cmc/, ""),
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0",
+          },
+        },
       },
     },
   };

@@ -23,10 +23,25 @@ const DEPTH = 6;
 const TRADE_ROWS = 13;
 
 /** Price grouping steps per market (Extended tick sizes upward). */
-const TICKS: Record<MarketKey, number[]> = {
+const TICKS: Partial<Record<MarketKey, number[]>> = {
   btc: [1, 10, 50, 100],
   eth: [0.1, 1, 5, 10],
+  bnb: [0.1, 0.5, 1, 5],
+  xrp: [0.0001, 0.001, 0.01, 0.1],
+  sol: [0.01, 0.1, 1, 5],
+  trx: [0.0001, 0.001, 0.01],
+  hype: [0.01, 0.1, 1, 5],
+  zec: [0.1, 1, 5, 10],
+  xmr: [0.1, 1, 5, 10],
+  doge: [0.00001, 0.0001, 0.001, 0.01],
 };
+
+function ticksFor(key: MarketKey, decimals: number): number[] {
+  return (
+    TICKS[key] ??
+    (decimals >= 4 ? [0.0001, 0.001, 0.01, 0.1] : decimals >= 2 ? [0.01, 0.1, 1, 5] : [1, 10, 50, 100])
+  );
+}
 
 const tickDecimals = (tick: number) =>
   tick >= 1 ? 0 : (String(tick).split(".")[1]?.length ?? 0);
@@ -116,7 +131,7 @@ export function OrderBook({
 
 function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) {
   const market = markets[marketKey];
-  const ticks = TICKS[marketKey];
+  const ticks = ticksFor(marketKey, market.priceDecimals);
   const [tickIndex, setTickIndex] = useState(0);
   const [unit, setUnit] = useState<SizeUnit>("coin");
   const tick = ticks[Math.min(tickIndex, ticks.length - 1)];
@@ -173,7 +188,11 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
           </span>
         </div>
 
-        {!book.connected && book.asks.length === 0 ? (
+        {!market.extendedMarket ? (
+          <div className="flex h-full w-full items-center justify-center px-6 text-center">
+            <span className="text-sm text-fog">No public book for this market.</span>
+          </div>
+        ) : !book.connected && book.asks.length === 0 ? (
           <div className="flex h-full w-full items-center justify-center">
             <span className="animate-pulse text-sm text-fog">
               Connecting to {market.extendedMarket}…
@@ -376,7 +395,7 @@ function BookRow({
 
 function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) {
   const market = markets[marketKey];
-  const trades = usePublicTrades(market.extendedMarket, TRADE_ROWS, live);
+  const trades = usePublicTrades(market.extendedMarket, TRADE_ROWS, live && !!market.extendedMarket);
 
   return (
     <div className="flex h-full w-full flex-col items-start gap-2.5">
@@ -407,8 +426,10 @@ function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }
         ))}
       </div>
       {trades.length === 0 ? (
-        <div className="flex flex-1 w-full items-center justify-center">
-          <span className="animate-pulse text-sm text-fog">Waiting for trades…</span>
+        <div className="flex flex-1 w-full items-center justify-center px-6 text-center">
+          <span className={`text-sm text-fog ${market.extendedMarket ? "animate-pulse" : ""}`}>
+            {market.extendedMarket ? "Waiting for trades…" : "No public trades for this market."}
+          </span>
         </div>
       ) : (
         <div className="flex w-full flex-col overflow-hidden">

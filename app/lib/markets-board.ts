@@ -26,6 +26,10 @@ export type ListedMarket = {
   extendedMarket: string;
   priceDecimals: number;
   maxLeverage: number;
+  cmcId: number;
+  tradable: boolean;
+  category: "crypto" | "equities";
+  rh: string;
 };
 
 const CATALOG: ListedMarket[] = (Object.keys(markets) as MarketKey[]).map((key) => {
@@ -34,11 +38,15 @@ const CATALOG: ListedMarket[] = (Object.keys(markets) as MarketKey[]).map((key) 
     key,
     id: market.id,
     label: market.label,
-    symbol: market.label.split("-")[0] ?? key.toUpperCase(),
+    symbol: market.pair.split("-")[0] ?? key.toUpperCase(),
     icon: market.icon,
     extendedMarket: market.extendedMarket,
     priceDecimals: market.priceDecimals,
     maxLeverage: market.maxLeverage,
+    cmcId: market.cmcId,
+    tradable: market.tradable,
+    category: market.category,
+    rh: market.rh,
   };
 });
 

@@ -118,7 +118,7 @@ export async function sendCloseInSecond(data: Hex, closedAt: bigint) {
     publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
     publicClient.getTransactionCount({ address: account.address, blockTag: "latest" }),
   ]);
-  let nonce = pending > latest ? pending : latest;
+  let nonce = BigInt(pending > latest ? pending : latest);
 
   // Wake and broadcast immediately. Extra RPC after the timer pushed the last close into the next second.
   await waitForSecond(publicClient, closedAt);

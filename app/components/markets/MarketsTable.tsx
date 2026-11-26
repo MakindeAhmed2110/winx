@@ -8,6 +8,7 @@ import {
   formatUsd,
 } from "../../lib/format";
 import { rangeSpec, type ListedMarket, type RangeId } from "../../lib/markets-board";
+import { MarketIcon } from "../trade/MarketIcon";
 import { Sparkline } from "./Sparkline";
 
 export type SortKey =
@@ -41,6 +42,14 @@ type Props = {
   positions: LocalPosition[];
   now: number;
 };
+
+function finite(value: number | undefined): number {
+  return value != null && Number.isFinite(value) ? value : -Infinity;
+}
+
+function finiteOrNull(value: number | undefined): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
+}
 
 function moneyChange(value: number): string {
   const abs = Math.abs(value);
@@ -153,9 +162,9 @@ export function MarketsTable({
         case "change":
           return row.changePct ?? -Infinity;
         case "funding":
-          return row.stats?.fundingRate ?? -Infinity;
+          return finite(row.stats?.fundingRate);
         case "oi":
-          return row.stats?.openInterest ?? -Infinity;
+          return finite(row.stats?.openInterest);
         case "volume":
           return row.stats?.dailyVolume ?? -Infinity;
         case "pnl":
@@ -221,9 +230,9 @@ export function MarketsTable({
               <Link className="markets-mobile-link" to={`/trade?market=${row.key}`}>
                 <span className="markets-mobile-name">
                   <span className="markets-mobile-pair">
-                    <img src={row.icon} alt="" width={19} height={19} />
+                    <MarketIcon symbol={row.symbol} icon={row.icon} size={19} />
                     <span>{row.label}</span>
-                    <span className="markets-mobile-lev">{row.maxLeverage}x</span>
+                    {row.maxLeverage > 0 ? <span className="markets-mobile-lev">{row.maxLeverage}x</span> : null}
                   </span>
                   <span className="markets-mobile-vol">Vol {vol}</span>
                 </span>
@@ -272,7 +281,10 @@ export function MarketsTable({
             rows.map((row) => {
               const up = (row.changePct ?? 0) >= 0;
               const premiumUp = (row.premium ?? 0) >= 0;
-              const funding = row.stats?.fundingRate;
+              const funding =
+                row.stats && Number.isFinite(row.stats.fundingRate) && row.stats.nextFundingTs > 0
+                  ? row.stats.fundingRate
+                  : undefined;
               const fundingUp = (funding ?? 0) >= 0;
               const countdown =
                 row.stats && now > 0
@@ -292,9 +304,9 @@ export function MarketsTable({
                       >
                         <Star filled={watched.has(row.key)} />
                       </button>
-                      <img src={row.icon} alt="" width={22} height={22} />
+                      <MarketIcon symbol={row.symbol} icon={row.icon} size={22} />
                       <span>{row.label}</span>
-                      <span className="markets-lev">{row.maxLeverage}X</span>
+                      {row.maxLeverage > 0 ? <span className="markets-lev">{row.maxLeverage}X</span> : null}
                     </div>
                   </td>
                   <td>{formatUsd(row.stats?.markPrice, decimals)}</td>
@@ -317,7 +329,7 @@ export function MarketsTable({
                       ? "—"
                       : `${funding.toFixed(4)}%${countdown ? ` ${countdown}` : ""}`}
                   </td>
-                  <td>{bookUsd(row.stats?.openInterest)}</td>
+                  <td>{bookUsd(finiteOrNull(row.stats?.openInterest))}</td>
                   <td>{bookUsd(row.stats?.dailyVolume)}</td>
                   <td className={row.pnlPct == null ? "is-muted" : row.pnlPct >= 0 ? "is-up" : "is-down"}>
                     {row.pnlPct == null

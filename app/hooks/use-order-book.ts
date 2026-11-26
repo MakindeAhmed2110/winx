@@ -62,7 +62,10 @@ export function useOrderBook(market: string, tick: number, depth: number): Order
   const [state, setState] = useState<OrderBookState>(EMPTY);
 
   useEffect(() => {
-    if (!market) return;
+    if (!market) {
+      setState(EMPTY);
+      return;
+    }
     const bids = new Map<number, number>();
     const asks = new Map<number, number>();
     let ws: WebSocket | undefined;
@@ -152,7 +155,10 @@ export function usePublicTrades(market: string, limit: number, enabled: boolean)
   const [trades, setTrades] = useState<PublicTrade[]>([]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !market) {
+      setTrades([]);
+      return;
+    }
     let ws: WebSocket | undefined;
     let closed = false;
     let retry: number | undefined;

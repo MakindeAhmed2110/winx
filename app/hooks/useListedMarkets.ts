@@ -24,6 +24,7 @@ export function useListedMarkets() {
       const catalog = marketCatalog();
       const reads = await Promise.all(
         catalog.map(async (market) => {
+          if (!market.tradable) return { market, row: null, ok: false as const, skip: true as const };
           try {
             const row = await publicClient.readContract({
               address: addresses.engine,
@@ -31,22 +32,23 @@ export function useListedMarkets() {
               functionName: "markets",
               args: [market.id],
             });
-            return { market, row, ok: true as const };
+            return { market, row, ok: true as const, skip: false as const };
           } catch {
-            return { market, row: null, ok: false as const };
+            return { market, row: null, ok: false as const, skip: false as const };
           }
         }),
       );
       if (cancelled) return;
-      const anyOk = reads.some((read) => read.ok);
+      const checked = reads.filter((read) => !read.skip);
+      const anyOk = checked.some((read) => read.ok);
       if (!anyOk) {
         setMarkets(catalog);
         return;
       }
       setMarkets(
         reads.flatMap((read) => {
-          if (!read.ok) return [];
-          if (!readField(read.row, "listed", 3)) return [];
+          if (read.skip) return [read.market];
+          if (!read.ok || !readField(read.row, "listed", 3)) return [];
           const maxLeverage = Number(readField(read.row, "maxLeverage", 1));
           return [
             {
