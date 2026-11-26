@@ -23,7 +23,7 @@ const COLUMNS = [
     title: "More",
     links: [
       { label: "Testnet explorer", href: "https://explorer.testnet.chain.robinhood.com" },
-      { label: "GitHub", href: "https://github.com/MakindeAhmed2110/winx" },
+      { label: "GitHub", href: "https://github.com/Winx-Perp" },
     ],
   },
 ] as const;
@@ -62,13 +62,16 @@ export function SiteFooter() {
           <p>
             Trade perps with leverage. Your size, side, and margin stay out of public view.
           </p>
+          <Link to="/docs" className="site-footer-docs">
+            Docs
+          </Link>
           <WinxCa />
           <div className="site-footer-socials">
             <a href="https://x.com/winxperp" target="_blank" rel="noreferrer">
               <XIcon />
               Follow @winxperp
             </a>
-            <a href="https://github.com/MakindeAhmed2110/winx" target="_blank" rel="noreferrer">
+            <a href="https://github.com/Winx-Perp" target="_blank" rel="noreferrer">
               <GitHubIcon />
               GitHub
             </a>

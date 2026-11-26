@@ -976,6 +976,19 @@ h3 {
   line-height: 1.45;
 }
 
+.site-footer-docs {
+  display: inline-flex;
+  margin-top: 0.9rem;
+  color: #f4f4f8;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.site-footer-docs:hover {
+  color: #fff;
+}
+
 .site-footer-socials {
   display: flex;
   flex-direction: column;

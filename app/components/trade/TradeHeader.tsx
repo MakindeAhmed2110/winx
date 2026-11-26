@@ -35,6 +35,7 @@ export function TradeHeader({ onFaucetClaimed }: { onFaucetClaimed?: () => void 
               ["/trade", "Perps"],
               ["/markets", "Markets"],
               ["/portfolio", "Portfolio"],
+              ["/docs", "Docs"],
             ] as const
           ).map(([to, label]) => (
             <NavLink
@@ -51,6 +52,9 @@ export function TradeHeader({ onFaucetClaimed }: { onFaucetClaimed?: () => void 
       </div>
 
       <div className="trade-header-actions flex shrink-0 items-center gap-2 md:gap-2.5">
+        <Link to="/docs" className="trade-nav-link sm:hidden">
+          Docs
+        </Link>
         <button
           type="button"
           className="trade-faucet-btn"

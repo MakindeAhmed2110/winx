@@ -32,12 +32,12 @@ export function LandingPage() {
             <img src="/logo/inverse-logomark.svg" alt="" className="h-9 w-auto md:h-10" />
             <span className="brand text-base tracking-[0.14em] text-paper md:text-lg">Winx</span>
           </a>
-          <nav className="ml-auto hidden items-center gap-5 sm:flex" aria-label="Site">
+          <nav className="ml-auto flex items-center" aria-label="Site">
             <Link to="/docs" className="text-sm font-semibold text-paper/80 no-underline hover:text-paper">
               Docs
             </Link>
           </nav>
-          <div className="min-w-0 sm:ml-0 ml-auto">
+          <div className="min-w-0">
             <WinxCa placement="nav" />
           </div>
           <Link
