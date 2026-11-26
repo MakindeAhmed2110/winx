@@ -38,11 +38,19 @@ export function LeverageSlider({
       </div>
 
       <div className="group relative h-[25px]">
-        <div className="absolute inset-x-0 top-[calc(50%-1.5px)] h-1 -translate-y-1/2 overflow-hidden border border-white/10 bg-[rgba(217,217,217,0.2)]">
+        <div className="absolute inset-x-0 top-[calc(50%-1.5px)] h-1 -translate-y-1/2 overflow-hidden bg-[rgba(217,217,217,0.2)]">
+          {/* Figma Fill: #ee63fc with Overlay blend over the track. Element blend
+              modes can't reach through the order panel's backdrop blur (it
+              isolates its contents), so the overlay is done here with
+              background-blend-mode over an opaque copy of the track as it looks
+              on the panel (gray 20% over near-black = #2c2c2c). The result is
+              Figma's overlay color, about rgb(82, 34, 87). */}
           <div
-            className="absolute inset-y-0 left-0 bg-[#ee63fc] mix-blend-overlay"
+            className="absolute inset-y-0 left-0 bg-[#2c2c2c] bg-[linear-gradient(#ee63fc,#ee63fc)] bg-blend-overlay"
             style={{ width: at(frac(value)) }}
           />
+          {/* Track stroke, drawn above the fill as in Figma. */}
+          <div className="pointer-events-none absolute inset-0 border border-white/10" />
         </div>
         {marks.map((m) => (
           <span
