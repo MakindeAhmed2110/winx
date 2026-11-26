@@ -136,12 +136,9 @@ export function TradePage() {
               </div>
             </div>
 
-            <aside className="no-scrollbar hidden max-lg:contents lg:block lg:h-full lg:w-[420px] lg:shrink-0 lg:overflow-x-hidden lg:overflow-y-auto lg:border-l lg:border-white/10 xl:w-[460px]">
-              <div className="relative max-lg:contents lg:flex lg:h-full lg:w-full lg:flex-col lg:px-4 lg:pt-[27px] lg:pb-[27px]">
-                <div className="hidden h-full w-full lg:block">
-                  <OrderForm desk={desk} />
-                </div>
-              </div>
+            {/* Figma: 407px order card, 25px from the right edge (8px shell margin + 17px). */}
+            <aside className="hidden lg:block lg:h-full lg:w-[424px] lg:shrink-0 lg:overflow-hidden lg:pr-[17px] lg:pb-[13px]">
+              <OrderForm desk={desk} />
             </aside>
           </div>
         </div>

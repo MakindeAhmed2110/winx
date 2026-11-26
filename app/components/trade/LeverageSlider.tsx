@@ -6,6 +6,14 @@ type Props = {
   onChange: (value: number) => void;
 };
 
+/** Knob is 25px; its centre travels between 12.5px and (100% - 12.5px). */
+const KNOB = 25;
+const at = (p: number) => `calc(${KNOB / 2}px + (100% - ${KNOB}px) * ${p})`;
+
+/**
+ * Figma "Slider" (Type=Leverage): thin track with ticks, magenta fill,
+ * ring knob, tick labels below. Tap a label to jump to it, drag to step.
+ */
 export function LeverageSlider({
   value,
   min = 1,
@@ -14,69 +22,75 @@ export function LeverageSlider({
   onChange,
 }: Props) {
   const span = Math.max(max - min, step);
-  const pct = Math.min(100, Math.max(0, ((value - min) / span) * 100));
-  const marks = [0, 25, 50, 75, 100];
-
-  const setFromPct = (p: number) => {
-    const raw = min + (p / 100) * span;
-    const stepped = Math.round(raw / step) * step;
-    onChange(Math.min(max, Math.max(min, stepped)));
-  };
+  const frac = (v: number) => Math.min(1, Math.max(0, (v - min) / span));
+  const marks = [
+    min,
+    ...[0.25, 0.5, 0.75].map((f) => Math.max(min + step, Math.round(max * f))),
+    max,
+  ];
 
   return (
-    <div className="leverage-slider">
-      <div className="leverage-slider-head">
-        <div className="leverage-slider-labels">
-          <span className="leverage-slider-title">Leverage</span>
-          <span className="leverage-slider-max">Max {max}x</span>
-        </div>
-        <span className="leverage-slider-value tabular-nums">{value}x</span>
+    <div className="flex w-full flex-col gap-2.5">
+      {/* `leverage-slider-head` is hidden inside the mobile order sheet. */}
+      <div className="leverage-slider-head flex items-center justify-between text-[12px] uppercase tracking-[-0.24px]">
+        <span className="text-white/50">Leverage</span>
+        <span className="font-mono tabular-nums text-white">{value}x</span>
       </div>
 
-      <div className="leverage-slider-body">
-        <div className="leverage-slider-rail">
-          <div className="leverage-slider-dot-grid" aria-hidden />
-          <input
-            type="range"
-            className="leverage-slider-input"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            aria-label="Leverage"
-            aria-valuemin={min}
-            aria-valuemax={max}
-            aria-valuenow={value}
-            aria-valuetext={`${value}x`}
-            onChange={(e) => onChange(Number(e.target.value))}
-          />
+      <div className="group relative h-[25px]">
+        <div className="absolute inset-x-0 top-[calc(50%-1.5px)] h-1 -translate-y-1/2 overflow-hidden border border-white/10 bg-[rgba(217,217,217,0.2)]">
           <div
-            className="leverage-slider-thumb"
+            className="absolute inset-y-0 left-0 bg-[#ee63fc] mix-blend-overlay"
+            style={{ width: at(frac(value)) }}
+          />
+        </div>
+        {marks.map((m) => (
+          <span
+            key={m}
             aria-hidden
-            style={{ left: `calc(${pct}% - 10px)` }}
-          >
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
+            className="absolute top-[calc(50%-1.5px)] h-1.5 w-px -translate-y-1/2 bg-[#d9d9d9]"
+            style={{ left: at(frac(m)) }}
+          />
+        ))}
+        <img
+          src="/icons/slider-knob.svg"
+          alt=""
+          aria-hidden
+          width={KNOB}
+          height={KNOB}
+          className="pointer-events-none absolute top-[-2px] z-[2] -translate-x-1/2 rounded-full group-has-[input:focus-visible]:shadow-[0_0_0_3px_rgba(255,255,255,0.35)]"
+          style={{ left: at(frac(value)) }}
+        />
+        <input
+          type="range"
+          className="absolute inset-0 z-[3] m-0 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-not-allowed [&::-moz-range-thumb]:size-[25px] [&::-webkit-slider-thumb]:size-[25px] [&::-webkit-slider-thumb]:appearance-none"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          aria-label="Leverage"
+          aria-valuetext={`${value}x`}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+      </div>
 
-        <div className="leverage-slider-marks">
-          {marks.map((m) => {
-            const markValue = Math.round(min + (m / 100) * span);
-            const active = Math.abs(pct - m) < 1;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setFromPct(m)}
-                className={active ? "is-active" : undefined}
-              >
-                {markValue}x
-              </button>
-            );
-          })}
-        </div>
+      <div className="relative h-3">
+        {marks.map((m, i) => {
+          const edge = i === 0 ? "left-0" : i === marks.length - 1 ? "right-0" : "-translate-x-1/2";
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => onChange(m)}
+              className={`absolute top-0 text-[11px] uppercase leading-none tracking-[-0.22px] transition-colors hover:text-white ${edge} ${
+                m === value ? "text-white" : "text-white/50"
+              }`}
+              style={i === 0 || i === marks.length - 1 ? undefined : { left: at(frac(m)) }}
+            >
+              {m}x
+            </button>
+          );
+        })}
       </div>
     </div>
   );
