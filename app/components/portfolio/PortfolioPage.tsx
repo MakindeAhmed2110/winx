@@ -5,7 +5,7 @@ import { usePrivyStatus } from "../auth/privy-status";
 import { PrivyAddressSync } from "../../hooks/useSessionAddress";
 import { useTradeDesk } from "../../hooks/useTradeDesk";
 import { useSettlementMarks } from "../../hooks/useSettlementMarks";
-import { markets } from "../../lib/config";
+import { marketById, markets } from "../../lib/config";
 import {
   embeddedWalletAddress,
   externalWalletAddress,
@@ -41,9 +41,7 @@ const ACCOUNT_TABS: { id: AccountTab; label: string }[] = [
 ];
 
 function marketLabel(marketId: number): string {
-  if (marketId === markets.btc.id) return markets.btc.label;
-  if (marketId === markets.eth.id) return markets.eth.label;
-  return `Market ${marketId}`;
+  return marketById(marketId)?.label ?? `Market ${marketId}`;
 }
 
 function money(value: number, digits = 2): string {

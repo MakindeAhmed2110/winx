@@ -51,6 +51,11 @@ export type MarkFeedPair = {
   rh?: string;
 };
 
+function marketId(raw: string | undefined, fallback: number): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
 function optionalMarkPair(
   key: string,
   marketId: number,
@@ -65,13 +70,13 @@ function optionalMarkPair(
 const listedMarkPairs: MarkFeedPair[] = [
   {
     key: "btc",
-    marketId: Number(import.meta.env.VITE_MARKET_BTC || 1),
+    marketId: marketId(import.meta.env.VITE_MARKET_BTC, 1),
     mainnet: mainnetChainlink.btcUsd,
     testnet: addresses.btcFeed,
   },
   {
     key: "eth",
-    marketId: Number(import.meta.env.VITE_MARKET_ETH || 2),
+    marketId: marketId(import.meta.env.VITE_MARKET_ETH, 2),
     mainnet: mainnetChainlink.ethUsd,
     testnet: addresses.ethFeed,
   },
@@ -80,13 +85,13 @@ const listedMarkPairs: MarkFeedPair[] = [
     [
       optionalMarkPair(
         "tsla",
-        Number(import.meta.env.VITE_MARKET_TSLA || 3),
+        marketId(import.meta.env.VITE_MARKET_TSLA, 16),
         mainnetChainlink.tslaUsd,
         import.meta.env.VITE_TSLA_FEED,
       ),
       optionalMarkPair(
         "nvda",
-        Number(import.meta.env.VITE_MARKET_NVDA || 4),
+        marketId(import.meta.env.VITE_MARKET_NVDA, 11),
         mainnetChainlink.nvdaUsd,
         import.meta.env.VITE_NVDA_FEED,
       ),
@@ -100,7 +105,7 @@ const listedMarkPairs: MarkFeedPair[] = [
  */
 export const markets = {
   btc: {
-    id: Number(import.meta.env.VITE_MARKET_BTC || 1),
+    id: marketId(import.meta.env.VITE_MARKET_BTC, 1),
     tradable: true,
     category: "crypto" as const,
     cmcId: 1,
@@ -116,7 +121,7 @@ export const markets = {
     rh: "",
   },
   eth: {
-    id: Number(import.meta.env.VITE_MARKET_ETH || 2),
+    id: marketId(import.meta.env.VITE_MARKET_ETH, 2),
     tradable: true,
     category: "crypto" as const,
     cmcId: 1027,
@@ -131,7 +136,7 @@ export const markets = {
     rh: "",
   },
   bnb: listed({
-    id: 3,
+    id: marketId(import.meta.env.VITE_MARKET_BNB, 3),
     lev: 40,
     cmcId: 1839,
     category: "crypto",
@@ -144,7 +149,7 @@ export const markets = {
     tv: "BINANCE:BNBUSDT",
   }),
   xrp: listed({
-    id: 4,
+    id: marketId(import.meta.env.VITE_MARKET_XRP, 4),
     lev: 30,
     cmcId: 52,
     category: "crypto",
@@ -157,7 +162,7 @@ export const markets = {
     tv: "BINANCE:XRPUSDT",
   }),
   sol: listed({
-    id: 5,
+    id: marketId(import.meta.env.VITE_MARKET_SOL, 5),
     lev: 50,
     cmcId: 5426,
     category: "crypto",
@@ -170,7 +175,7 @@ export const markets = {
     tv: "BINANCE:SOLUSDT",
   }),
   trx: listed({
-    id: 6,
+    id: marketId(import.meta.env.VITE_MARKET_TRX, 6),
     lev: 30,
     cmcId: 1958,
     category: "crypto",
@@ -183,7 +188,7 @@ export const markets = {
     tv: "BINANCE:TRXUSDT",
   }),
   hype: listed({
-    id: 7,
+    id: marketId(import.meta.env.VITE_MARKET_HYPE, 7),
     lev: 30,
     cmcId: 32196,
     category: "crypto",
@@ -196,7 +201,7 @@ export const markets = {
     tv: "BINANCE:HYPEUSDT",
   }),
   zec: listed({
-    id: 8,
+    id: marketId(import.meta.env.VITE_MARKET_ZEC, 8),
     lev: 30,
     cmcId: 1437,
     category: "crypto",
@@ -209,7 +214,7 @@ export const markets = {
     tv: "BINANCE:ZECUSDT",
   }),
   xmr: listed({
-    id: 9,
+    id: marketId(import.meta.env.VITE_MARKET_XMR, 9),
     lev: 30,
     cmcId: 328,
     category: "crypto",
@@ -222,7 +227,7 @@ export const markets = {
     tv: "KUCOIN:XMRUSDT",
   }),
   doge: listed({
-    id: 10,
+    id: marketId(import.meta.env.VITE_MARKET_DOGE, 10),
     lev: 30,
     cmcId: 74,
     category: "crypto",
@@ -234,14 +239,14 @@ export const markets = {
     feed: "0xda60fb0fdf6879e62d342e77e6400804ca06f124",
     tv: "BINANCE:DOGEUSDT",
   }),
-  nvda: stock(11, "NVDA", "0x0b009227430f1a2cebcae5c6394c6c1cdecf4dc6", "NASDAQ:NVDA", 40685),
-  spcx: stock(12, "SPCX", "0x351893c0d4452fddeae372eaf19c08f80650cef6", "", 37068),
-  meta: stock(13, "META", "0xff00ae8921c1c0767daa60d4a9e992530d2808e4", "NASDAQ:META", 40780),
-  coin: stock(14, "COIN", "0x17bdb6f1708bc16c80b98e9b0b6bd13a5877566e", "NASDAQ:COIN", 40722),
-  tteq: stock(15, "TTEQ", "0xd7f166698ea8385962aa166250fcd2198ab51698", "NASDAQ:TTEQ", 0),
-  tsla: stock(16, "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA", 40691),
-  googl: stock(17, "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL", 40757),
-  aapl: stock(18, "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL", 40703),
+  nvda: stock(marketId(import.meta.env.VITE_MARKET_NVDA, 11), "NVDA", "0x0b009227430f1a2cebcae5c6394c6c1cdecf4dc6", "NASDAQ:NVDA", 40685),
+  spcx: stock(marketId(import.meta.env.VITE_MARKET_SPCX, 12), "SPCX", "0x351893c0d4452fddeae372eaf19c08f80650cef6", "", 37068),
+  meta: stock(marketId(import.meta.env.VITE_MARKET_META, 13), "META", "0xff00ae8921c1c0767daa60d4a9e992530d2808e4", "NASDAQ:META", 40780),
+  coin: stock(marketId(import.meta.env.VITE_MARKET_COIN, 14), "COIN", "0x17bdb6f1708bc16c80b98e9b0b6bd13a5877566e", "NASDAQ:COIN", 40722),
+  tteq: stock(marketId(import.meta.env.VITE_MARKET_TTEQ, 15), "TTEQ", "0xd7f166698ea8385962aa166250fcd2198ab51698", "NASDAQ:TTEQ", 0),
+  tsla: stock(marketId(import.meta.env.VITE_MARKET_TSLA, 16), "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA", 40691),
+  googl: stock(marketId(import.meta.env.VITE_MARKET_GOOGL, 17), "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL", 40757),
+  aapl: stock(marketId(import.meta.env.VITE_MARKET_AAPL, 18), "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL", 40703),
 } as const;
 
 function listed(args: {
@@ -310,11 +315,14 @@ export const markFeedPairs: MarkFeedPair[] = [
 
 export type MarketKey = keyof typeof markets;
 
-export function feedForMarketId(marketId: number): `0x${string}` {
-  const row = (Object.values(markets) as (typeof markets)[MarketKey][]).find(
+export function marketById(marketId: number) {
+  return (Object.values(markets) as (typeof markets)[MarketKey][]).find(
     (market) => market.id === marketId,
   );
-  return row?.feed ?? addresses.btcFeed;
+}
+
+export function feedForMarketId(marketId: number): `0x${string}` {
+  return marketById(marketId)?.feed ?? addresses.btcFeed;
 }
 
 export const explorerTx = (hash: string) =>

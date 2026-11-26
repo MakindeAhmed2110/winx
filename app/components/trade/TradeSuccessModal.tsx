@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { formatUnits } from "viem";
-import { explorerTx, markets } from "../../lib/config";
+import { explorerTx, marketById, markets } from "../../lib/config";
 import { formatUsdw } from "../../lib/format";
 
 function safeTokenAmount(raw: string): number {
@@ -46,8 +46,7 @@ export type UnshieldSuccess = {
 export type TradeSuccess = OpenSuccess | CloseSuccess | UnshieldSuccess;
 
 function marketMeta(marketId: number) {
-  if (marketId === markets.eth.id) return markets.eth;
-  return markets.btc;
+  return marketById(marketId) ?? markets.btc;
 }
 
 function SuccessMark() {

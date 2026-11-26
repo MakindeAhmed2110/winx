@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatUnits } from "viem";
+import { marketById } from "../../lib/config";
 import { formatUsdw } from "../../lib/format";
 import { useSettlementMarks } from "../../hooks/useSettlementMarks";
 import type { LocalNote } from "../../lib/privacy/notes";
@@ -161,7 +162,7 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
               const pnl = entry > 0 ? dir * ((mark - entry) / entry) * notional : 0;
               const pct = margin > 0 ? (pnl / margin) * 100 : 0;
               const up = pnl >= 0;
-              const pair = p.marketId === 1 ? "BTC/USD" : "ETH/USD";
+              const pair = marketById(p.marketId)?.label ?? `Market ${p.marketId}`;
               const money = Math.abs(pnl).toLocaleString(undefined, { maximumFractionDigits: 0 });
               return (
                 <div key={p.commitment} className="pos-card">
@@ -244,7 +245,7 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
                 return (
                   <tr key={p.commitment}>
                     <td className="text-paper">
-                      {p.marketId === 1 ? "BTC-PERP" : "ETH-PERP"}
+                      {marketById(p.marketId)?.label ?? `Market ${p.marketId}`}
                     </td>
                     <td className={p.isLong ? "text-[var(--trade-green)]" : "text-[var(--trade-red)]"}>
                       {p.isLong ? "Long" : "Short"}
