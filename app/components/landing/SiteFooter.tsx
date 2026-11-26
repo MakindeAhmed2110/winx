@@ -15,6 +15,7 @@ const COLUMNS = [
     title: "Learn",
     links: [
       { label: "How it works", to: "/#how" },
+      { label: "Docs", to: "/docs" },
       { label: "FAQ", to: "/#faq" },
     ],
   },
