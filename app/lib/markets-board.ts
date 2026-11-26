@@ -71,6 +71,7 @@ export function treemap(weights: number[]): { x: number; y: number; w: number; h
     index,
     area: (share / floorSum) * 10_000,
   }));
+  items.sort((a, b) => b.area - a.area);
   const placed: { index: number; x: number; y: number; w: number; h: number }[] = [];
   split(
     items,
@@ -100,6 +101,8 @@ function split(
     cursor += items[cut - 1]!.area;
     if (cursor >= total / 2) break;
   }
+  // A tile bigger than everything before it would otherwise leave an empty side and recurse forever.
+  if (cut >= items.length) cut = items.length - 1;
   const left = items.slice(0, cut);
   const right = items.slice(cut);
   const leftShare = left.reduce((sum, item) => sum + item.area, 0) / total;

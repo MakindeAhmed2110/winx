@@ -138,7 +138,7 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
 
   useEffect(() => setTickIndex(0), [marketKey]);
 
-  const book = useOrderBook(live ? market.extendedMarket : "", tick, DEPTH);
+  const book = useOrderBook(live ? market.book : "", tick, DEPTH);
   const asks = [...book.asks].reverse();
   const maxTotal = Math.max(
     book.asks.at(-1)?.total ?? 0,
@@ -188,14 +188,14 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
           </span>
         </div>
 
-        {!market.extendedMarket ? (
+        {!market.book ? (
           <div className="flex h-full w-full items-center justify-center px-6 text-center">
             <span className="text-sm text-fog">No public book for this market.</span>
           </div>
         ) : !book.connected && book.asks.length === 0 ? (
           <div className="flex h-full w-full items-center justify-center">
             <span className="animate-pulse text-sm text-fog">
-              Connecting to {market.extendedMarket}…
+              Connecting to {market.book}…
             </span>
           </div>
         ) : (
@@ -395,12 +395,12 @@ function BookRow({
 
 function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) {
   const market = markets[marketKey];
-  const trades = usePublicTrades(market.extendedMarket, TRADE_ROWS, live && !!market.extendedMarket);
+  const trades = usePublicTrades(market.book, TRADE_ROWS, live && !!market.book);
 
   return (
     <div className="flex h-full w-full flex-col items-start gap-2.5">
       <div className="flex w-full items-center justify-between px-1">
-        <span className="text-[11px] whitespace-nowrap text-fog">{market.extendedMarket}</span>
+        <span className="text-[11px] whitespace-nowrap text-fog">{market.book || market.pair}</span>
         <span className="flex items-center gap-1.5">
           <span className="relative flex size-1.5">
             <span
@@ -427,8 +427,8 @@ function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }
       </div>
       {trades.length === 0 ? (
         <div className="flex flex-1 w-full items-center justify-center px-6 text-center">
-          <span className={`text-sm text-fog ${market.extendedMarket ? "animate-pulse" : ""}`}>
-            {market.extendedMarket ? "Waiting for trades…" : "No public trades for this market."}
+          <span className={`text-sm text-fog ${market.book ? "animate-pulse" : ""}`}>
+            {market.book ? "Waiting for trades…" : "No public trades for this market."}
           </span>
         </div>
       ) : (

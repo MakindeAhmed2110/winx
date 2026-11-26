@@ -99,6 +99,17 @@ const listedMarkPairs: MarkFeedPair[] = [
   ).filter((p): p is MarkFeedPair => p != null),
 ];
 
+/** Extended public books. TTEQ is not listed there. */
+const STOCK_BOOKS: Record<string, string> = {
+  NVDA: "NVDA_24_5-USD",
+  SPCX: "SPCX-USD",
+  META: "META_24_5-USD",
+  COIN: "COIN_24_5-USD",
+  TSLA: "TSLA_24_5-USD",
+  GOOGL: "GOOGL-USD",
+  AAPL: "AAPL_24_5-USD",
+};
+
 /**
  * Every row settles on the engine. BTC and ETH keep their original feeds.
  * The rest were listed with their own AggregatorV3 mirrors.
@@ -115,6 +126,7 @@ export const markets = {
     icon: "/assets/btc.svg",
     /** Extended public book / trades market. Settlement uses the testnet feed. */
     extendedMarket: "BTC-USD",
+    book: "BTC-USD",
     priceDecimals: 0,
     feed: addresses.btcFeed,
     tv: "BINANCE:BTCUSDT",
@@ -130,6 +142,7 @@ export const markets = {
     pair: "ETH-USD",
     icon: "/assets/eth.svg",
     extendedMarket: "ETH-USD",
+    book: "ETH-USD",
     priceDecimals: 2,
     feed: addresses.ethFeed,
     tv: "BINANCE:ETHUSDT",
@@ -262,6 +275,7 @@ function listed(args: {
   feed: `0x${string}`;
   tv: string;
   rh?: string;
+  book?: string;
 }) {
   return {
     id: args.id,
@@ -277,6 +291,8 @@ function listed(args: {
     feed: args.feed,
     tv: args.tv,
     rh: args.rh ?? "",
+    /** Public book venue. Stocks keep an empty extendedMarket so quotes stay on Robinhood. */
+    book: args.book ?? args.extended,
   };
 }
 
@@ -294,6 +310,7 @@ function stock(id: number, symbol: string, feed: `0x${string}`, tv: string, cmcI
     feed,
     tv,
     rh: symbol,
+    book: STOCK_BOOKS[symbol] ?? "",
   });
 }
 
