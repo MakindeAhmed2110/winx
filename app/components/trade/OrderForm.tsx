@@ -194,12 +194,32 @@ const hoverLayer = (rgb: string) => ({
   boxShadow: `inset 0 0 4px 0 rgba(${rgb},0.5)`,
   border: "1px solid rgba(255,255,255,0.125)",
 });
-/** State=Hover (selected side hovered): fill 48%, radial 81%, stroke 25%, inner shadow 4px. */
+/**
+ * State=Hover (selected side hovered) is fill 48% + radial 81%, with the same
+ * stroke and shadow as Default. This layer is drawn over Default, so it holds
+ * only the difference: alphas solved so Default + this = Hover at every point
+ * of the gradient (all layers share one color, so this is exact). The 1px
+ * transparent border keeps it off Default's white stroke. Because it adds to
+ * Default instead of replacing it, hover can fade over 100ms while selecting
+ * a side stays instant.
+ */
 const overLayer = (rgb: string) => ({
-  backgroundColor: `rgba(${rgb},0.48)`,
-  backgroundImage: edgeGlow(rgb, 0.575),
-  boxShadow: `inset 0 0 4px 0 rgb(${rgb})`,
-  border: "1px solid rgba(255,255,255,0.25)",
+  border: "1px solid transparent",
+  backgroundClip: "padding-box",
+  backgroundOrigin: "border-box",
+  backgroundImage: `radial-gradient(58.68% 100% at 50% 100%, ${[
+    [0.6639, 0],
+    [0.6146, 12.5],
+    [0.5671, 25],
+    [0.5214, 37.5],
+    [0.4773, 50],
+    [0.4348, 62.5],
+    [0.3937, 75],
+    [0.3541, 87.5],
+    [0.3158, 100],
+  ]
+    .map(([a, at]) => `rgba(${rgb},${a}) ${at}%`)
+    .join(", ")})`,
 });
 /** State=Pressed: fill 30%, radial 81% with the stops reversed (bright edges). */
 const pressedLayer = (rgb: string) => ({
@@ -285,7 +305,8 @@ function SideButton({
           }`}
           style={activeLayer(rgb)}
         />
-        {/* Hover on the selected side; same 100ms dissolve as the inactive hover. */}
+        {/* Hover on the selected side (Default + this = Figma Hover); same 100ms
+            dissolve as the inactive hover. */}
         <span
           className={`${layer} transition-opacity ${
             active ? "opacity-0 duration-100 group-hover:opacity-100" : "opacity-0 duration-0"
