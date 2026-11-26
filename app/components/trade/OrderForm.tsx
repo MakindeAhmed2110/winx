@@ -167,26 +167,66 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
   );
 }
 
-/** Long / Short toggle with a highlight that slides between the two. */
+/**
+ * Figma "Trade side button" variants (296:56428), colors as RGB triplets.
+ * Gradient alphas are the Figma stop alpha (0.71) times the paint opacity.
+ */
+const SIDE = {
+  long: { rgb: "16,237,191", glow: "#416161" },
+  short: { rgb: "246,61,109", glow: "#614149" },
+} as const;
+type Side = keyof typeof SIDE;
+
+const edgeGlow = (rgb: string, a: number) =>
+  `radial-gradient(58.68% 100% at 50% 100%, rgba(${rgb},${a}) 0%, rgba(${rgb},0) 100%)`;
+
+/** State=Default: fill 24%, radial 19%, stroke white 25%, inner shadow 4px. */
+const activeLayer = (rgb: string) => ({
+  backgroundColor: `rgba(${rgb},0.24)`,
+  backgroundImage: edgeGlow(rgb, 0.135),
+  boxShadow: `inset 0 0 4px 0 rgb(${rgb})`,
+  border: "1px solid rgba(255,255,255,0.25)",
+});
+/** State=Inactive hover: fill 24%, radial 40.5%, stroke 12.5%, shadow at 50%. */
+const hoverLayer = (rgb: string) => ({
+  backgroundColor: `rgba(${rgb},0.24)`,
+  backgroundImage: edgeGlow(rgb, 0.2876),
+  boxShadow: `inset 0 0 4px 0 rgba(${rgb},0.5)`,
+  border: "1px solid rgba(255,255,255,0.125)",
+});
+/** State=Pressed: fill 30%, radial 81% with the stops reversed (bright edges). */
+const pressedLayer = (rgb: string) => ({
+  backgroundColor: `rgba(${rgb},0.3)`,
+  backgroundImage: `radial-gradient(63.86% 308.8% at 50% 50%, rgba(${rgb},0) 0%, rgba(${rgb},0.575) 100%)`,
+  boxShadow: `inset 0 0 4px 0 rgb(${rgb})`,
+  border: "1px solid rgba(255,255,255,0.25)",
+});
+
+/**
+ * Figma "Position tab" (305:10975). Interactions, mirrored 1:1:
+ * - Click the inactive side: it lights instantly; the old side stays lit,
+ *   then fades to Inactive over 300ms ease-out (Switching → Settled).
+ * - Hover the inactive side: dissolves to Inactive hover in 100ms ease-out.
+ * - While pressing: instant swap to the Pressed variant.
+ * Each state is its own layer and only opacity animates.
+ */
 function SideSwitch({ isLong, onChange }: { isLong: boolean; onChange: (long: boolean) => void }) {
+  const side: Side = isLong ? "long" : "short";
   return (
     <div
       role="group"
       aria-label="Position side"
-      className="relative grid grid-cols-2 gap-1 border border-white/5 bg-white/5 px-[5px] py-1"
+      className="relative isolate grid grid-cols-2 gap-1 overflow-hidden border border-white/5 bg-white/5 px-[5px] py-1"
     >
       <span
         aria-hidden
-        className={`pointer-events-none absolute inset-y-1 left-[5px] w-[calc(50%-7px)] border border-white/25 transition-[transform,background-color,box-shadow] duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
-          isLong
-            ? "translate-x-0 bg-[rgba(16,237,191,0.24)] shadow-[inset_0_0_4px_0_#10edbf]"
-            : "translate-x-[calc(100%+4px)] bg-[rgba(246,61,109,0.24)] shadow-[inset_0_0_4px_0_#f63d6d]"
-        }`}
+        className="pointer-events-none absolute top-[-3px] left-1/2 h-[38px] w-9 -translate-x-1/2 rounded-[300px] opacity-40 blur-[38.75px]"
+        style={{ backgroundColor: SIDE[side].glow }}
       />
-      <SideButton active={isLong} onClick={() => onChange(true)}>
+      <SideButton side="long" active={isLong} onClick={() => onChange(true)}>
         Long
       </SideButton>
-      <SideButton active={!isLong} onClick={() => onChange(false)}>
+      <SideButton side="short" active={!isLong} onClick={() => onChange(false)}>
         Short
       </SideButton>
     </div>
@@ -194,22 +234,60 @@ function SideSwitch({ isLong, onChange }: { isLong: boolean; onChange: (long: bo
 }
 
 function SideButton({
+  side,
   active,
   onClick,
   children,
 }: {
+  side: Side;
   active: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
+  const { rgb, glow } = SIDE[side];
+  // Figma "Ease out" is the CSS standard curve, not Tailwind's ease-out.
+  const layer =
+    "pointer-events-none absolute inset-0 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none";
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="relative z-[1] flex h-6 items-center justify-center px-5 font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
+      className="group relative isolate flex h-6 items-center justify-center overflow-hidden px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
     >
-      {children}
+      {/* Inactive: 1% tint + background blur; fades in with the 300ms settle. */}
+      <span
+        aria-hidden
+        className={`${layer} backdrop-blur-[5.4px] transition-opacity ${
+          active ? "opacity-0 duration-0" : "opacity-100 duration-300"
+        }`}
+        style={{ backgroundColor: `rgba(${rgb},0.01)` }}
+      />
+      <span
+        aria-hidden
+        className={`${layer} transition-opacity ${
+          active ? "opacity-0 duration-0" : "opacity-0 duration-100 group-hover:opacity-100"
+        }`}
+        style={hoverLayer(rgb)}
+      />
+      <span
+        aria-hidden
+        className={`${layer} transition-opacity ${
+          active ? "opacity-100 duration-0" : "opacity-0 duration-300"
+        }`}
+        style={activeLayer(rgb)}
+      />
+      <span aria-hidden className={`${layer} opacity-0 group-active:opacity-100`} style={pressedLayer(rgb)} />
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute left-1/2 z-[1] h-[38px] w-9 -translate-x-1/2 rounded-[300px] blur-[38.75px] ${
+          active ? "top-[26px]" : "top-[27px]"
+        }`}
+        style={{ backgroundColor: glow }}
+      />
+      <span className="relative z-[2] font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white">
+        {children}
+      </span>
     </button>
   );
 }
