@@ -62,9 +62,11 @@ export function TradePage() {
         }}
       />
 
-      <div className="trade-shell relative z-10 mx-0 mb-0 min-h-0 flex-1 md:mx-2.5 md:mb-2.5 lg:mx-2">
+      {/* Desktop frame from Figma (1728 x 1117): content 25px from each side,
+          top at y 58 (1px under the 59px header), 23px above the 32px footer. */}
+      <div className="trade-shell relative z-10 mx-0 mb-0 min-h-0 flex-1 md:mx-2.5 md:mb-2.5 lg:mx-[25px] lg:-mt-px lg:mb-[23px]">
         <div className="trade-shell-inner relative z-[1] h-full min-h-0">
-          <div className="no-scrollbar flex h-full flex-col gap-4 overflow-x-hidden overflow-y-auto overscroll-x-none px-3 pt-3 pb-[148px] sm:px-6 lg:flex-row lg:gap-0 lg:overflow-hidden lg:p-0 lg:pb-0">
+          <div className="no-scrollbar flex h-full flex-col gap-4 overflow-x-hidden overflow-y-auto overscroll-x-none px-3 pt-3 pb-[148px] sm:px-6 lg:flex-row lg:gap-[10px] lg:overflow-hidden lg:p-0 lg:pb-0">
             <div className="no-scrollbar max-lg:contents lg:min-w-0 lg:flex-1 lg:overflow-auto lg:pt-[22px] lg:pr-[11px] lg:pb-6 lg:pl-2">
               <div className="max-lg:order-1">
                 <MarketTicker
@@ -136,15 +138,15 @@ export function TradePage() {
               </div>
             </div>
 
-            {/* Figma: 407px order card, 25px from the right edge (8px shell margin + 17px). */}
-            <aside className="hidden lg:block lg:h-full lg:w-[424px] lg:shrink-0 lg:overflow-hidden lg:pr-[17px] lg:pb-[13px]">
+            {/* Figma: 407 x 1004 order panel, 10px right of the left column. */}
+            <aside className="hidden lg:block lg:h-full lg:w-[407px] lg:shrink-0">
               <OrderForm desk={desk} />
             </aside>
           </div>
         </div>
       </div>
 
-      <footer className="relative z-20 hidden h-7 shrink-0 items-center justify-between border-t border-white/[0.08] bg-black px-4 text-[10px] uppercase tracking-[0.14em] text-fog lg:flex">
+      <footer className="relative z-20 hidden h-8 shrink-0 items-center justify-between border-t border-white/[0.08] bg-black px-4 text-[10px] uppercase tracking-[0.14em] text-fog lg:flex">
         <span className="inline-flex items-center gap-1.5 text-long">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-long" />
           Online

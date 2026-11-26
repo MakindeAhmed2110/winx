@@ -986,8 +986,6 @@ h3 {
 }
 
 .trade-shell {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0;
   overflow: hidden;
   background: #000;
 }
@@ -4024,10 +4022,6 @@ html:not(.winx-privy-open) [data-privy-dialog] {
 @media (max-width: 1023px) {
   .markets-page {
     padding-bottom: 88px;
-  }
-
-  .trade-shell {
-    border: 0;
   }
 }
 
