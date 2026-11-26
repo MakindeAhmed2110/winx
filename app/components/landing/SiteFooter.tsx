@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { WinxCa } from "./WinxCa";
 
 const COLUMNS = [
   {
@@ -60,6 +61,7 @@ export function SiteFooter() {
           <p>
             Trade perps with leverage. Your size, side, and margin stay out of public view.
           </p>
+          <WinxCa />
           <div className="site-footer-socials">
             <a href="https://x.com/winxperp" target="_blank" rel="noreferrer">
               <XIcon />

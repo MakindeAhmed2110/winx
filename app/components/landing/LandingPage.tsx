@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { FaqSection } from "./FaqSection";
 import { FeatureStrip } from "./FeatureStrip";
 import { SiteFooter } from "./SiteFooter";
+import { WinxCa } from "./WinxCa";
 import {
   MarketVisual,
   OrderbookVisual,
@@ -26,14 +27,17 @@ export function LandingPage() {
         {/* Floor: brand tint settles into solid ink */}
         <div className="hero-floor" aria-hidden />
 
-        <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-5 pt-7 md:px-8 md:pt-9">
-          <a href="/" className="flex items-center gap-3 no-underline md:gap-3.5">
+        <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center gap-3 px-5 pt-7 md:gap-4 md:px-8 md:pt-9">
+          <a href="/" className="flex shrink-0 items-center gap-3 no-underline md:gap-3.5">
             <img src="/logo/inverse-logomark.svg" alt="" className="h-9 w-auto md:h-10" />
             <span className="brand text-base tracking-[0.14em] text-paper md:text-lg">Winx</span>
           </a>
+          <div className="ml-auto min-w-0">
+            <WinxCa placement="nav" />
+          </div>
           <Link
             to="/trade"
-            className="rounded-full border border-white/14 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-paper no-underline backdrop-blur-sm transition hover:border-white/28 hover:bg-white/[0.07]"
+            className="shrink-0 rounded-full border border-white/14 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-paper no-underline backdrop-blur-sm transition hover:border-white/28 hover:bg-white/[0.07]"
           >
             Launch app
           </Link>
