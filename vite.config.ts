@@ -37,7 +37,7 @@ function faucetPlugin(): Plugin {
   return {
     name: "winx-faucet",
     configureServer(server) {
-      // Before Vite's file middleware, which would serve api/faucet.ts as source.
+      // Before Vite's file middleware, which would serve api/faucet.js as source.
       server.middlewares.use(apiMiddleware());
       // Post-hook so this also runs before React Router's SPA catch-all.
       return () => {

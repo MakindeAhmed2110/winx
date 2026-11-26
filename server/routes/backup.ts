@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { handleWalletPegRequest } from "../server/wallet-peg-middleware";
+import { handleBackupRequest } from "../backup-middleware";
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
-  return handleWalletPegRequest(req, res);
+  return handleBackupRequest(req, res);
 }

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { handleFaucetRequest } from "../server/faucet-middleware";
+import { handleFaucetRequest } from "../faucet-middleware";
 
 /** Claim sends two transactions and waits for both receipts. */
 export const maxDuration = 60;

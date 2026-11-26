@@ -1,16 +1,21 @@
+import { mkdir } from "node:fs/promises";
 import { build } from "esbuild";
-import { rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const routes = ["faucet", "backup", "timed-tx", "wallet-peg"];
+const outDir = path.join(root, "api");
 
+await mkdir(outDir, { recursive: true });
+
+// Sources live outside api/. Vercel treats every file in api/ as a function,
+// so the directory only receives these JavaScript bundles.
 for (const name of routes) {
   await build({
     absWorkingDir: root,
-    entryPoints: [path.join(root, "api", `${name}.ts`)],
-    outfile: path.join(root, "api", `${name}.js`),
+    entryPoints: [path.join(root, "server", "routes", `${name}.ts`)],
+    outfile: path.join(outDir, `${name}.js`),
     bundle: true,
     platform: "node",
     format: "esm",
@@ -19,10 +24,4 @@ for (const name of routes) {
     external: ["pg"],
     logLevel: "info",
   });
-}
-
-// Vercel compiles api/*.ts itself and then fails to load the .ts imports.
-// The bundled .js files are the functions. The .ts entries must not ship beside them.
-if (process.env.VERCEL === "1") {
-  await Promise.all(routes.map((name) => rm(path.join(root, "api", `${name}.ts`))));
 }
