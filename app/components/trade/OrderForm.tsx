@@ -194,6 +194,13 @@ const hoverLayer = (rgb: string) => ({
   boxShadow: `inset 0 0 4px 0 rgba(${rgb},0.5)`,
   border: "1px solid rgba(255,255,255,0.125)",
 });
+/** State=Hover (selected side hovered): fill 48%, radial 81%, stroke 25%, inner shadow 4px. */
+const overLayer = (rgb: string) => ({
+  backgroundColor: `rgba(${rgb},0.48)`,
+  backgroundImage: edgeGlow(rgb, 0.575),
+  boxShadow: `inset 0 0 4px 0 rgb(${rgb})`,
+  border: "1px solid rgba(255,255,255,0.25)",
+});
 /** State=Pressed: fill 30%, radial 81% with the stops reversed (bright edges). */
 const pressedLayer = (rgb: string) => ({
   backgroundColor: `rgba(${rgb},0.3)`,
@@ -207,6 +214,7 @@ const pressedLayer = (rgb: string) => ({
  * - Click the inactive side: it lights instantly; the old side stays lit,
  *   then fades to Inactive over 300ms ease-out (Switching → Settled).
  * - Hover the inactive side: dissolves to Inactive hover in 100ms ease-out.
+ * - Hover the selected side: dissolves to the Hover variant in 100ms ease-out.
  * - While pressing: instant swap to the Pressed variant.
  * Each state is its own layer and only opacity animates.
  */
@@ -276,6 +284,14 @@ function SideButton({
           active ? "opacity-100 duration-0" : "opacity-0 duration-300"
         }`}
         style={activeLayer(rgb)}
+      />
+      {/* Hover on the selected side; same 100ms dissolve as the inactive hover. */}
+      <span
+        aria-hidden
+        className={`${layer} transition-opacity ${
+          active ? "opacity-0 duration-100 group-hover:opacity-100" : "opacity-0 duration-0"
+        }`}
+        style={overLayer(rgb)}
       />
       <span aria-hidden className={`${layer} opacity-0 group-active:opacity-100`} style={pressedLayer(rgb)} />
       <span
