@@ -263,42 +263,43 @@ function SideButton({
       onClick={onClick}
       className="group relative isolate flex h-6 items-center justify-center overflow-hidden px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
     >
-      {/* Inactive: 1% tint + background blur; fades in with the 300ms settle. */}
-      <span
-        aria-hidden
-        className={`${layer} backdrop-blur-[5.4px] transition-opacity ${
-          active ? "opacity-0 duration-0" : "opacity-100 duration-300"
-        }`}
-        style={{ backgroundColor: `rgba(${rgb},0.01)` }}
-      />
-      <span
-        aria-hidden
-        className={`${layer} transition-opacity ${
-          active ? "opacity-0 duration-0" : "opacity-0 duration-100 group-hover:opacity-100"
-        }`}
-        style={hoverLayer(rgb)}
-      />
-      <span
-        aria-hidden
-        className={`${layer} transition-opacity ${
-          active ? "opacity-100 duration-0" : "opacity-0 duration-300"
-        }`}
-        style={activeLayer(rgb)}
-      />
-      {/* Hover on the selected side; same 100ms dissolve as the inactive hover. */}
-      <span
-        aria-hidden
-        className={`${layer} transition-opacity ${
-          active ? "opacity-0 duration-100 group-hover:opacity-100" : "opacity-0 duration-0"
-        }`}
-        style={overLayer(rgb)}
-      />
+      {/* Resting states. Pressed is a separate variant in Figma, so this whole
+          stack hides instantly while pressing instead of sitting under it. */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 group-active:opacity-0">
+        {/* Inactive: 1% tint + background blur; fades in with the 300ms settle. */}
+        <span
+          className={`${layer} backdrop-blur-[5.4px] transition-opacity ${
+            active ? "opacity-0 duration-0" : "opacity-100 duration-300"
+          }`}
+          style={{ backgroundColor: `rgba(${rgb},0.01)` }}
+        />
+        <span
+          className={`${layer} transition-opacity ${
+            active ? "opacity-0 duration-0" : "opacity-0 duration-100 group-hover:opacity-100"
+          }`}
+          style={hoverLayer(rgb)}
+        />
+        <span
+          className={`${layer} transition-opacity ${
+            active ? "opacity-100 duration-0" : "opacity-0 duration-300"
+          }`}
+          style={activeLayer(rgb)}
+        />
+        {/* Hover on the selected side; same 100ms dissolve as the inactive hover. */}
+        <span
+          className={`${layer} transition-opacity ${
+            active ? "opacity-0 duration-100 group-hover:opacity-100" : "opacity-0 duration-0"
+          }`}
+          style={overLayer(rgb)}
+        />
+      </span>
       <span aria-hidden className={`${layer} opacity-0 group-active:opacity-100`} style={pressedLayer(rgb)} />
+      {/* Glow blob (36x38, 27px down, layer blur 77.5). Default and Inactive keep
+          the text on top ("first on top"); Hover, Inactive hover and Pressed
+          draw the blob over the text, which dims it slightly. */}
       <span
         aria-hidden
-        className={`pointer-events-none absolute left-1/2 z-[1] h-[38px] w-9 -translate-x-1/2 rounded-[300px] blur-[38.75px] ${
-          active ? "top-[26px]" : "top-[27px]"
-        }`}
+        className="pointer-events-none absolute top-[27px] left-1/2 z-[1] h-[38px] w-9 -translate-x-1/2 rounded-[300px] blur-[38.75px] group-hover:z-[3] group-active:z-[3]"
         style={{ backgroundColor: glow }}
       />
       <span className="relative z-[2] font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white">
