@@ -60,7 +60,7 @@ import {
   proveUnshield,
 } from "../lib/privacy/prove";
 import { appendLeafAfterInsert, resyncVaultLeaves } from "../lib/privacy/vaultSync";
-import { requestKeeperMarkSync, settlementUpdatedAt, syncAggregatorMarks } from "../lib/syncMarks";
+import { requestKeeperMarkSync, requestServerMarkSync, settlementUpdatedAt } from "../lib/syncMarks";
 import { sendTimedClose } from "../lib/timed-tx";
 import type { TradeSuccess } from "../components/trade/TradeSuccessModal";
 
@@ -682,20 +682,17 @@ export function useTradeDesk() {
         );
         if (updatedAt == null) return false;
         const block = await publicClient.getBlock();
-        return block.timestamp - updatedAt < 30n;
+        return block.timestamp - updatedAt < 90n;
       };
+      if (marketId == null) throw new Error("Missing market");
       if (await fresh()) return;
       setStatus({ kind: "work", text: "Refreshing live settlement mark…" });
       const synced = await requestKeeperMarkSync();
       if (synced && (await fresh())) return;
-      await syncAggregatorMarks({
-        marketId,
-        writeContractAsync: (args) => writeContractAsync(args),
-        waitForTx: (args) => publicClient.waitForTransactionReceipt(args),
-        readContract: (args) => publicClient.readContract(args),
-      });
+      await requestServerMarkSync(marketId);
+      if (!(await fresh())) throw new Error("Settlement mark is still stale. Try again.");
     },
-    [publicClient, writeContractAsync],
+    [publicClient],
   );
 
   const onClosePosition = useCallback(

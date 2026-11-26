@@ -4,6 +4,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { handleBackupRequest, isBackupPath } from "./server/backup-middleware.ts";
 import { handleFaucetRequest, isFaucetPath } from "./server/faucet-middleware.ts";
+import { handleSyncMarkRequest, isSyncMarkPath } from "./server/sync-mark-middleware.ts";
 import { handleTimedTxRequest, isTimedTxPath } from "./server/timed-tx-middleware.ts";
 import { handleWalletPegRequest, isWalletPegPath } from "./server/wallet-peg-middleware.ts";
 
@@ -17,7 +18,9 @@ function apiMiddleware() {
           ? handleWalletPegRequest(req, res)
           : isTimedTxPath(req.url)
             ? handleTimedTxRequest(req, res)
-            : null;
+            : isSyncMarkPath(req.url)
+              ? handleSyncMarkRequest(req, res)
+              : null;
     if (!run) {
       next();
       return;

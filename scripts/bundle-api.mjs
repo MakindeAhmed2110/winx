@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const routes = ["faucet", "backup", "timed-tx", "wallet-peg"];
+const routes = ["faucet", "backup", "timed-tx", "wallet-peg", "sync-mark"];
 const outDir = path.join(root, "api");
 
 await mkdir(outDir, { recursive: true });

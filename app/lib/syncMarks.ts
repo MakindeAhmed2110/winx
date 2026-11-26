@@ -215,6 +215,25 @@ export async function settlementUpdatedAt(
   }
 }
 
+/** Ask this app's server to publish the mark. The trading wallet is not a feed keeper. */
+export async function requestServerMarkSync(marketId: number): Promise<void> {
+  const res = await fetch("/api/sync-mark", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ marketId }),
+  });
+  const text = await res.text();
+  let body: { error?: string; ok?: boolean } = {};
+  try {
+    body = text ? (JSON.parse(text) as { error?: string; ok?: boolean }) : {};
+  } catch {
+    throw new Error("Settlement mark server failed to start. The order was not sent.");
+  }
+  if (!res.ok || body.ok === false) {
+    throw new Error(body.error || "Could not refresh the settlement mark");
+  }
+}
+
 export async function requestKeeperMarkSync(): Promise<boolean> {
   const url = import.meta.env.VITE_KEEPER_URL as string | undefined;
   const token = import.meta.env.VITE_KEEPER_TOKEN as string | undefined;
