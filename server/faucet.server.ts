@@ -12,12 +12,21 @@ import { privateKeyToAccount } from "viem/accounts";
 import { defineChain } from "viem";
 
 export const FAUCET_AMOUNT = parseUnits("1000", 6);
-/** Covers one close while the base fee is around 10 gwei. */
+/** Covers approve + shield + open at the testnet base fee. */
 export const FAUCET_ETH_AMOUNT = parseEther("0.025");
 export const FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const FAUCET_TIP = 1_000_000_000n;
+/**
+ * A native transfer on Robinhood testnet estimates around 234k gas.
+ * 21,000 is under the floor, so the ETH drop was rejected and wallets
+ * kept the USDW with nothing to pay gas.
+ */
+const ETH_TRANSFER_GAS = 300_000n;
+const TOKEN_TRANSFER_GAS = 300_000n;
+/** Send another 0.025 ETH when a prior claim left the wallet below this. */
+const GAS_TOPUP_BELOW = parseEther("0.001");
 /** ETH transfer + ERC-20 transfer gas so the drop is not stranded. */
-const FAUCET_GAS_RESERVE = (10_000_000_000n + FAUCET_TIP) * (21_000n + 80_000n);
+const FAUCET_GAS_RESERVE = (10_000_000_000n + FAUCET_TIP) * (ETH_TRANSFER_GAS + TOKEN_TRANSFER_GAS);
 
 async function faucetGasPrice(publicClient: ReadClient): Promise<bigint> {
   const block = await publicClient.getBlock();
@@ -168,9 +177,15 @@ export async function faucetStatus(address: string, privateKey: `0x${string}` | 
     };
   }
   try {
+    const client = faucetClient();
     const admin = privateKeyToAccount(privateKey).address;
-    const last = await lastClaimMs(faucetClient(), admin, address as `0x${string}`);
-    return cooldownFrom(last);
+    const recipient = address as `0x${string}`;
+    const last = await lastClaimMs(client, admin, recipient);
+    const status = cooldownFrom(last);
+    if (status.available) return status;
+    const balance = await client.getBalance({ address: recipient });
+    if (balance >= GAS_TOPUP_BELOW) return status;
+    return { ...status, available: true, gasOnly: true, retryInMs: 0 };
   } catch {
     return {
       ...cooldownFrom(null),
@@ -232,6 +247,49 @@ async function sendAtNonce<T>(
   throw last;
 }
 
+/** Prior USDW claim landed, but the ETH transfer did not. Send gas only. */
+async function sendGasTopup(privateKey: `0x${string}`, recipient: `0x${string}`) {
+  const chain = faucetChain();
+  const account = privateKeyToAccount(privateKey);
+  const transport = http(chain.rpcUrls.default.http[0]);
+  const publicClient = createPublicClient({ chain, transport });
+  const walletClient = createWalletClient({ chain, transport, account });
+  const balance = await publicClient.getBalance({ address: recipient });
+  if (balance >= GAS_TOPUP_BELOW) return null;
+  const nativeBal = await publicClient.getBalance({ address: account.address });
+  if (nativeBal < FAUCET_ETH_AMOUNT + FAUCET_GAS_RESERVE) {
+    return {
+      ok: false as const,
+      status: 503,
+      error: "Faucet is empty — admin ETH balance too low",
+    };
+  }
+  const ethTxHash = await withSenderLock(async () => {
+    const gasPrice = await faucetGasPrice(publicClient);
+    const hash = await sendAtNonce(publicClient, account.address, (nonce) =>
+      walletClient.sendTransaction({
+        account,
+        to: recipient,
+        value: FAUCET_ETH_AMOUNT,
+        gas: ETH_TRANSFER_GAS,
+        gasPrice,
+        nonce: Number(nonce),
+      }),
+    );
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status === "reverted") throw new Error("ETH gas drop reverted");
+    return hash;
+  });
+  return {
+    ok: true as const,
+    status: 200,
+    amount: "0",
+    ethAmount: "0.025",
+    gasOnly: true,
+    ethTxHash,
+  };
+}
+
 /** A blank amount is the standard drip. A typed amount cannot exceed it. */
 function requestedAmount(
   raw: string | undefined,
@@ -277,6 +335,8 @@ export async function claimFaucet(
       };
     }
     if (!gate.available) {
+      const topped = await sendGasTopup(privateKey, to as `0x${string}`);
+      if (topped) return { ...topped, nextClaimAt: gate.nextClaimAt ?? undefined };
       return {
         ok: false as const,
         status: 429,
@@ -341,7 +401,7 @@ export async function claimFaucet(
             account,
             to: recipient,
             value: FAUCET_ETH_AMOUNT,
-            gas: 21_000n,
+            gas: ETH_TRANSFER_GAS,
             gasPrice: ethGasPrice,
             nonce: Number(nonce),
           }),

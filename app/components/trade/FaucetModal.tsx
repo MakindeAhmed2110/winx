@@ -9,6 +9,7 @@ type FaucetStatus = {
   ethAmount?: string;
   nextClaimAt?: number | null;
   retryInMs?: number;
+  gasOnly?: boolean;
   error?: string;
 };
 
@@ -96,7 +97,9 @@ export function FaucetModal({
     status?.nextClaimAt != null
       ? Math.max(0, status.nextClaimAt - now)
       : status?.retryInMs ?? 0;
-  const locked = Boolean(address) && !txHash && retryMs > 0;
+  const sent = Boolean(txHash || ethTxHash);
+  const gasOnly = Boolean(status?.gasOnly) && !sent;
+  const locked = Boolean(address) && !sent && retryMs > 0 && !gasOnly;
 
   async function claim() {
     if (!address || busy) return;
@@ -208,19 +211,25 @@ export function FaucetModal({
           </div>
         </div>
 
-        {txHash ? (
+        {sent ? (
           <div className="relative mt-4 text-center">
             <p className="text-[13px]" style={{ color: "var(--trade-green)" }}>
-              {ethTxHash ? "1,000 USDW + 0.025 ETH sent" : "1,000 USDW sent"}
+              {txHash && ethTxHash
+                ? "1,000 USDW + 0.025 ETH sent"
+                : ethTxHash
+                  ? "0.025 ETH sent"
+                  : "1,000 USDW sent"}
             </p>
-            <a
-              href={explorerTx(txHash)}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-block text-[11px] text-fog underline hover:text-paper"
-            >
-              View USDW transaction
-            </a>
+            {txHash ? (
+              <a
+                href={explorerTx(txHash)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-[11px] text-fog underline hover:text-paper"
+              >
+                View USDW transaction
+              </a>
+            ) : null}
             {ethTxHash ? (
               <a
                 href={explorerTx(ethTxHash)}
@@ -241,18 +250,20 @@ export function FaucetModal({
         <button
           type="button"
           className="trade-place-btn relative mt-5 w-full py-2.5 disabled:opacity-50"
-          disabled={!address || busy || locked || Boolean(txHash)}
+          disabled={!address || busy || locked || sent}
           onClick={() => void claim()}
         >
           {!address
             ? "Connect wallet"
             : busy
               ? "Sending…"
-              : txHash
+              : sent
                 ? "Claimed"
                 : locked
                   ? `Available in ${formatCountdown(retryMs)}`
-                  : "Claim 1,000 USDW + 0.025 ETH"}
+                  : gasOnly
+                    ? "Claim 0.025 ETH"
+                    : "Claim 1,000 USDW + 0.025 ETH"}
         </button>
       </div>
     </div>,

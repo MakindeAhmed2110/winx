@@ -38,6 +38,7 @@ export function useSettlementMarks(): Record<number, number | null> {
   const tsla = useRhQuote(markets.tsla.rh);
   const googl = useRhQuote(markets.googl.rh);
   const aapl = useRhQuote(markets.aapl.rh);
+  const ant = useRhQuote(markets.ant.rh);
 
   const book = (
     live: number | null,
@@ -63,5 +64,6 @@ export function useSettlementMarks(): Record<number, number | null> {
     [markets.tsla.id]: tsla.price,
     [markets.googl.id]: googl.price,
     [markets.aapl.id]: aapl.price,
+    [markets.ant.id]: ant.price,
   };
 }

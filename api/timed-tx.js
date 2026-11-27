@@ -20968,7 +20968,10 @@ var FAUCET_AMOUNT = parseUnits("1000", 6);
 var FAUCET_ETH_AMOUNT = parseEther("0.025");
 var FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1e3;
 var FAUCET_TIP = 1000000000n;
-var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (21000n + 80000n);
+var ETH_TRANSFER_GAS = 300000n;
+var TOKEN_TRANSFER_GAS = 300000n;
+var GAS_TOPUP_BELOW = parseEther("0.001");
+var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (ETH_TRANSFER_GAS + TOKEN_TRANSFER_GAS);
 var senderQueue = Promise.resolve();
 var transferEvent = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)"

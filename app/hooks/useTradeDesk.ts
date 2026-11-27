@@ -73,6 +73,16 @@ const CLOSE_LEAD_S = 8n;
 /** Seconds that must remain after the proof so the server can still hit that second. */
 const CLOSE_SLACK_S = 4n;
 const CLOSE_GAS = 1_600_000n;
+const APPROVE_GAS = 400_000n;
+const PROOF_GAS = 1_600_000n;
+
+function txError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/insufficient funds|exceeds the balance|total cost \(gas/i.test(msg)) {
+    return "This wallet needs ETH for gas. Tap Faucet, then swipe again.";
+  }
+  return msg;
+}
 
 type HeadSample = { ts: bigint; recv: number; rtt: number };
 
@@ -612,6 +622,7 @@ export function useTradeDesk() {
           address: addresses.vault,
           abi: vaultAbi,
           functionName: "unshield",
+          gas: PROOF_GAS,
           args: [
             proved.proof,
             {
@@ -656,7 +667,7 @@ export function useTradeDesk() {
       setBottomTab("balances");
     } catch (e) {
       refreshLocal();
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+      setStatus({ kind: "err", text: txError(e) });
     }
   }, [ensureSigner, writeContractAsync, refreshLocal, refetchUsdw, address, publicClient, pushBackup]);
 
@@ -931,7 +942,7 @@ export function useTradeDesk() {
         return false;
       } catch (e) {
         refreshLocal();
-        setStatus({ kind: "err", text: e instanceof Error ? e.message : String(e) });
+        setStatus({ kind: "err", text: txError(e) });
         return false;
       } finally {
         clock.stop();
@@ -996,6 +1007,7 @@ export function useTradeDesk() {
             address: addresses.usdw,
             abi: erc20Abi,
             functionName: "approve",
+            gas: APPROVE_GAS,
             args: [addresses.vault, maxUint256],
           });
           await publicClient.waitForTransactionReceipt({ hash: ah });
@@ -1018,6 +1030,7 @@ export function useTradeDesk() {
           address: addresses.vault,
           abi: vaultAbi,
           functionName: "shield",
+          gas: PROOF_GAS,
           args: [
             shielded.proof,
             {
@@ -1146,6 +1159,7 @@ export function useTradeDesk() {
         address: addresses.engine,
         abi: engineAbi,
         functionName: "open",
+        gas: PROOF_GAS,
         args: [
           provedOpen.proof,
           {
@@ -1237,7 +1251,7 @@ export function useTradeDesk() {
       setBottomTab("positions");
     } catch (e) {
       refreshLocal();
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = txError(e);
       setStatus({
         kind: "err",
         text: shieldConfirmed

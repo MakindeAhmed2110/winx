@@ -12,6 +12,7 @@ const INK: Record<string, string> = {
   SPCX: "#d7d7dc",
   TSLA: "#e82127",
   META: "#0668e1",
+  ANT: "#f0efe9",
 };
 
 export function MarketIcon({
@@ -29,7 +30,7 @@ export function MarketIcon({
     return <img src={icon} alt="" width={size} height={size} className={className} />;
   }
   const fill = INK[symbol] ?? "#3a3a42";
-  const ink = symbol === "BNB" || symbol === "HYPE" || symbol === "ZEC" || symbol === "SPCX" || symbol === "DOGE"
+  const ink = symbol === "BNB" || symbol === "HYPE" || symbol === "ZEC" || symbol === "SPCX" || symbol === "DOGE" || symbol === "ANT"
     ? "#161616"
     : "#fff";
   return (

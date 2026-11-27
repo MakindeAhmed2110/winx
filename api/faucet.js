@@ -20894,7 +20894,10 @@ var FAUCET_AMOUNT = parseUnits("1000", 6);
 var FAUCET_ETH_AMOUNT = parseEther("0.025");
 var FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1e3;
 var FAUCET_TIP = 1000000000n;
-var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (21000n + 80000n);
+var ETH_TRANSFER_GAS = 300000n;
+var TOKEN_TRANSFER_GAS = 300000n;
+var GAS_TOPUP_BELOW = parseEther("0.001");
+var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (ETH_TRANSFER_GAS + TOKEN_TRANSFER_GAS);
 async function faucetGasPrice(publicClient) {
   const block = await publicClient.getBlock();
   return (block.baseFeePerGas ?? 0n) + FAUCET_TIP;
@@ -21014,9 +21017,15 @@ async function faucetStatus(address, privateKey) {
     };
   }
   try {
+    const client = faucetClient();
     const admin = privateKeyToAccount(privateKey).address;
-    const last = await lastClaimMs(faucetClient(), admin, address);
-    return cooldownFrom(last);
+    const recipient = address;
+    const last = await lastClaimMs(client, admin, recipient);
+    const status = cooldownFrom(last);
+    if (status.available) return status;
+    const balance = await client.getBalance({ address: recipient });
+    if (balance >= GAS_TOPUP_BELOW) return status;
+    return { ...status, available: true, gasOnly: true, retryInMs: 0 };
   } catch {
     return {
       ...cooldownFrom(null),
@@ -21062,6 +21071,49 @@ async function sendAtNonce(publicClient, address, send) {
   }
   throw last;
 }
+async function sendGasTopup(privateKey, recipient) {
+  const chain = faucetChain();
+  const account = privateKeyToAccount(privateKey);
+  const transport = http(chain.rpcUrls.default.http[0]);
+  const publicClient = createPublicClient({ chain, transport });
+  const walletClient = createWalletClient({ chain, transport, account });
+  const balance = await publicClient.getBalance({ address: recipient });
+  if (balance >= GAS_TOPUP_BELOW) return null;
+  const nativeBal = await publicClient.getBalance({ address: account.address });
+  if (nativeBal < FAUCET_ETH_AMOUNT + FAUCET_GAS_RESERVE) {
+    return {
+      ok: false,
+      status: 503,
+      error: "Faucet is empty \u2014 admin ETH balance too low"
+    };
+  }
+  const ethTxHash = await withSenderLock(async () => {
+    const gasPrice = await faucetGasPrice(publicClient);
+    const hash3 = await sendAtNonce(
+      publicClient,
+      account.address,
+      (nonce) => walletClient.sendTransaction({
+        account,
+        to: recipient,
+        value: FAUCET_ETH_AMOUNT,
+        gas: ETH_TRANSFER_GAS,
+        gasPrice,
+        nonce: Number(nonce)
+      })
+    );
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: hash3 });
+    if (receipt.status === "reverted") throw new Error("ETH gas drop reverted");
+    return hash3;
+  });
+  return {
+    ok: true,
+    status: 200,
+    amount: "0",
+    ethAmount: "0.025",
+    gasOnly: true,
+    ethTxHash
+  };
+}
 function requestedAmount(raw) {
   if (!raw || !raw.trim()) return { ok: true, amount: FAUCET_AMOUNT };
   if (!/^\d+(\.\d{1,6})?$/.test(raw.trim())) return { ok: false, error: "Enter a USDW amount." };
@@ -21098,6 +21150,8 @@ async function claimFaucet(to, privateKey, amountRaw) {
       };
     }
     if (!gate.available) {
+      const topped = await sendGasTopup(privateKey, to);
+      if (topped) return { ...topped, nextClaimAt: gate.nextClaimAt ?? void 0 };
       return {
         ok: false,
         status: 429,
@@ -21162,7 +21216,7 @@ async function claimFaucet(to, privateKey, amountRaw) {
             account,
             to: recipient,
             value: FAUCET_ETH_AMOUNT,
-            gas: 21000n,
+            gas: ETH_TRANSFER_GAS,
             gasPrice: ethGasPrice,
             nonce: Number(nonce)
           })

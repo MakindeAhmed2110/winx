@@ -58,6 +58,7 @@ const PAIRS: Pair[] = [
   { marketId: 16, rh: "TSLA", testnet: "0x2b340256d6fedb5179ad27f8bed87524cf744279" },
   { marketId: 17, rh: "GOOGL", testnet: "0x18960eb5c718ae39bd1ded471ddedb22d4a28313" },
   { marketId: 18, rh: "AAPL", testnet: "0xd0cab71210f7f74fba56200b68240153e804edf2" },
+  { marketId: 19, rh: "ANT", testnet: "0xb2508c331fac13f0afeefdaa7f5f247088c7e09e" },
 ];
 
 const feedAbi = [

@@ -108,6 +108,7 @@ const STOCK_BOOKS: Record<string, string> = {
   TSLA: "TSLA_24_5-USD",
   GOOGL: "GOOGL-USD",
   AAPL: "AAPL_24_5-USD",
+  ANT: "ANTHROP-USD",
 };
 
 /**
@@ -260,6 +261,7 @@ export const markets = {
   tsla: stock(marketId(import.meta.env.VITE_MARKET_TSLA, 16), "TSLA", "0x2b340256d6fedb5179ad27f8bed87524cf744279", "NASDAQ:TSLA", 40691),
   googl: stock(marketId(import.meta.env.VITE_MARKET_GOOGL, 17), "GOOGL", "0x18960eb5c718ae39bd1ded471ddedb22d4a28313", "NASDAQ:GOOGL", 40757),
   aapl: stock(marketId(import.meta.env.VITE_MARKET_AAPL, 18), "AAPL", "0xd0cab71210f7f74fba56200b68240153e804edf2", "NASDAQ:AAPL", 40703),
+  ant: stock(marketId(import.meta.env.VITE_MARKET_ANT, 19), "ANT", "0xb2508c331fac13f0afeefdaa7f5f247088c7e09e", "", 42896, 50),
 } as const;
 
 function listed(args: {
@@ -296,10 +298,10 @@ function listed(args: {
   };
 }
 
-function stock(id: number, symbol: string, feed: `0x${string}`, tv: string, cmcId: number) {
+function stock(id: number, symbol: string, feed: `0x${string}`, tv: string, cmcId: number, lev = 10) {
   return listed({
     id,
-    lev: 10,
+    lev,
     cmcId,
     category: "equities",
     label: `${symbol}-PERP`,

@@ -29,6 +29,17 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 type SortKey = "market" | "price" | "change" | "volume";
 
+const SEARCH_ALIASES: Partial<Record<MarketKey, string>> = {
+  ant: "anthropic",
+  spcx: "spacex",
+  nvda: "nvidia",
+  tsla: "tesla",
+  googl: "google alphabet",
+  aapl: "apple",
+  coin: "coinbase",
+  meta: "facebook",
+};
+
 const MARKET_KEYS = Object.keys(markets) as MarketKey[];
 
 function readWatch(): Set<string> {
@@ -83,14 +94,16 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
     return MARKET_KEYS.filter((k) => {
       const m = markets[k];
       if (tab === "watch" && !watched.has(k)) return false;
-      if (tab === "new" || tab === "commodities" || tab === "indices") return false;
+      if (tab === "new" && k !== "ant") return false;
+      if (tab === "commodities" || tab === "indices") return false;
       if ((tab === "equities" || tab === "xstocks") && markets[k].category !== "equities") return false;
       if (tab === "crypto" && markets[k].category !== "crypto") return false;
       if (!q) return true;
       return (
         m.pair.toLowerCase().includes(q) ||
         m.label.toLowerCase().includes(q) ||
-        k.includes(q)
+        k.includes(q) ||
+        (SEARCH_ALIASES[k]?.includes(q) ?? false)
       );
     });
   }, [query, tab, watched]);

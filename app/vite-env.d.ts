@@ -32,6 +32,7 @@ interface ImportMetaEnv {
   readonly VITE_MARKET_TSLA: string;
   readonly VITE_MARKET_GOOGL: string;
   readonly VITE_MARKET_AAPL: string;
+  readonly VITE_MARKET_ANT: string;
   readonly VITE_MAINNET_RPC_URL?: string;
   readonly VITE_CHAINLINK_BTC_USD?: string;
   readonly VITE_CHAINLINK_ETH_USD?: string;

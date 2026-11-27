@@ -20857,7 +20857,10 @@ var FAUCET_AMOUNT = parseUnits("1000", 6);
 var FAUCET_ETH_AMOUNT = parseEther("0.025");
 var FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1e3;
 var FAUCET_TIP = 1000000000n;
-var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (21000n + 80000n);
+var ETH_TRANSFER_GAS = 300000n;
+var TOKEN_TRANSFER_GAS = 300000n;
+var GAS_TOPUP_BELOW = parseEther("0.001");
+var FAUCET_GAS_RESERVE = (10000000000n + FAUCET_TIP) * (ETH_TRANSFER_GAS + TOKEN_TRANSFER_GAS);
 var senderQueue = Promise.resolve();
 var transferEvent = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)"
@@ -20942,7 +20945,8 @@ var PAIRS = [
   { marketId: 15, rh: "TTEQ", testnet: "0xd7f166698ea8385962aa166250fcd2198ab51698" },
   { marketId: 16, rh: "TSLA", testnet: "0x2b340256d6fedb5179ad27f8bed87524cf744279" },
   { marketId: 17, rh: "GOOGL", testnet: "0x18960eb5c718ae39bd1ded471ddedb22d4a28313" },
-  { marketId: 18, rh: "AAPL", testnet: "0xd0cab71210f7f74fba56200b68240153e804edf2" }
+  { marketId: 18, rh: "AAPL", testnet: "0xd0cab71210f7f74fba56200b68240153e804edf2" },
+  { marketId: 19, rh: "ANT", testnet: "0xb2508c331fac13f0afeefdaa7f5f247088c7e09e" }
 ];
 var feedAbi = [
   {
