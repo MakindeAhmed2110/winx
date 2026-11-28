@@ -130,13 +130,14 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
                 type="button"
                 aria-pressed={orderType === k}
                 onClick={() => switchType(k)}
-                className="relative flex flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
+                className="group relative flex flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
               >
-                {/* Selected tab: 10% fill and a 2px stroke outside the bottom edge. */}
+                {/* Selected tab: 10% fill and a 2px stroke outside the bottom edge.
+                    Hovering an unselected tab shows the same at half opacity. */}
                 <span
                   aria-hidden
                   className={`pointer-events-none absolute inset-0 bg-white/10 transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
-                    orderType === k ? "opacity-100" : "opacity-0"
+                    orderType === k ? "opacity-100" : "opacity-0 group-hover:opacity-50"
                   }`}
                 >
                   <span className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-white" />
