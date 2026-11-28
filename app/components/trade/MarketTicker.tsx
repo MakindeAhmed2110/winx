@@ -6,6 +6,7 @@ import {
   formatUsd,
 } from "../../lib/format";
 import type { MarketKey } from "../../hooks/useTradeDesk";
+import { useCirculatingSupply } from "../../hooks/use-circulating-supply";
 import { useLiveMark } from "../../hooks/use-live-mark";
 import { useMarketStats } from "../../hooks/use-market-stats";
 import { useNow } from "../../hooks/use-poll";
@@ -19,6 +20,15 @@ type Props = {
   leverage?: number;
 };
 
+/** Figma shows market cap in billions with two decimals, e.g. $1,202.92B. */
+function formatBillionsUsd(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `$${(value / 1e9).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}B`;
+}
+
 export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
   const market = markets[marketKey];
   const { data: stats } = useMarketStats(market.extendedMarket, 3000);
@@ -27,6 +37,9 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
   const decimals = market.priceDecimals;
 
   const mark = live ?? stats?.markPrice ?? null;
+  // Market cap = circulating supply (CoinGecko) × the live mark shown beside it.
+  const supply = useCirculatingSupply(marketKey);
+  const mcap = supply != null && mark != null ? supply * mark : null;
   const oracle = stats?.indexPrice ?? null;
   const changePct = stats?.dailyChangePct;
   const changeUp = changePct == null ? undefined : changePct >= 0;
@@ -39,8 +52,9 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
 
   return (
     // Figma ticker row: the pair and price on the left, the 813px stats bar on
-    // the right (it shrinks, then scrolls, on narrower screens).
-    <div className="trade-ticker flex flex-col items-stretch gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-[18px]">
+    // the right. Below 1536px the seven stats don't fit beside the pair, so
+    // they take their own row underneath.
+    <div className="trade-ticker flex flex-col items-stretch gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between 2xl:gap-[18px]">
       <div className="trade-ticker-pair flex min-w-0 items-center justify-between gap-3 lg:justify-start lg:gap-[23px]">
         <div className="trade-ticker-id flex min-w-0 flex-col items-start gap-[5px]">
           <MarketPicker marketKey={marketKey} onSelect={onSelect} />
@@ -62,8 +76,9 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
         </div>
       </div>
 
-      <div className="trade-ticker-scroll no-scrollbar -mx-4 hidden min-w-0 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:block lg:px-0 xl:w-[813px]">
+      <div className="trade-ticker-scroll no-scrollbar -mx-4 hidden min-w-0 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:block lg:px-0 2xl:w-[813px]">
         <div className="trade-ticker-stats flex w-max min-w-full items-center justify-between gap-[14px] uppercase">
+          <TickerStat label="Mcap" value={formatBillionsUsd(mcap)} />
           <TickerStat
             label="Mark"
             value={formatUsd(mark, decimals === 0 ? 2 : decimals)}
