@@ -141,9 +141,12 @@ export function PortfolioChart({
                   <stop offset="100%" stopColor={stroke} stopOpacity="0" />
                 </linearGradient>
               </defs>
+              {/* Desktop follows Figma (app.css): 10% gridlines, a 1.65px line and
+                  no area fill or end dot. */}
               {ticks.map((tick) => (
                 <line
                   key={tick}
+                  className="portfolio-chart-grid"
                   x1="0"
                   x2={width}
                   y1={yOf(tick)}
@@ -153,8 +156,17 @@ export function PortfolioChart({
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
-              <path d={area} fill={`url(#${gradientId})`} />
-              <path d={line} fill="none" stroke={stroke} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              <path className="portfolio-chart-area" d={area} fill={`url(#${gradientId})`} />
+              <path
+                className="portfolio-chart-stroke"
+                d={line}
+                fill="none"
+                stroke={stroke}
+                strokeWidth="2.4"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
             </svg>
             <span
               className="portfolio-chart-now"

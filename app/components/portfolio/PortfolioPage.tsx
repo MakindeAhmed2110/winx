@@ -15,7 +15,14 @@ import type { LocalPosition } from "../../lib/privacy/notes";
 import { MobileTradeDock } from "../trade/MobileTradeDock";
 import { TradeHeader } from "../trade/TradeHeader";
 import { TradeFooter } from "../trade/TradeFooter";
+import { CardGlow, type GlowLayer } from "../CardGlow";
 import { PageBackdrop } from "../PageBackdrop";
+
+/** The Portfolio overview card's two Figma glows (card 1678 x 516 in Figma). */
+const PORTFOLIO_GLOW: readonly GlowLayer[] = [
+  { left: "-85.37%", top: "-49.71%", width: "176.14%", height: "99.42%", rotate: 44 },
+  { left: "-6.75%", top: "-36.19%", width: "128.27%", height: "72.39%", rotate: 42.6 },
+];
 import { TradeSuccessModal } from "../trade/TradeSuccessModal";
 import { useUsdwSeries } from "../../hooks/useUsdwSeries";
 import { PortfolioCashModal } from "./PortfolioCashModal";
@@ -110,6 +117,8 @@ export function PortfolioPage() {
   const usdwStart = usdw.points[0]?.v ?? 0;
   const usdwEnd = usdw.points[usdw.points.length - 1]?.v ?? (connected ? totalEquity : 0);
   const usdwChange = usdwEnd - usdwStart;
+  // Figma shows the move over the chart's range as a percentage (+2.36%).
+  const usdwChangePct = usdwStart > 0 ? (usdwChange / usdwStart) * 100 : 0;
 
   const stats = [
     ["shielded", "Shielded", `${money(connected ? shielded : 0)} USDW`, false],
@@ -172,6 +181,7 @@ export function PortfolioPage() {
         </div>
 
         <section className="portfolio-overview">
+          <CardGlow layers={PORTFOLIO_GLOW} className="-z-10" />
           <div className="portfolio-overview-copy">
             <div className="portfolio-tabs" role="tablist" aria-label="Balance view">
               {WORTH_TABS.map((tab) => (
@@ -181,7 +191,7 @@ export function PortfolioPage() {
                   className={view === tab.id ? "is-active" : ""}
                   onClick={() => setView(tab.id)}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </div>
@@ -189,7 +199,8 @@ export function PortfolioPage() {
             <div className="portfolio-total">
               <strong>${money(connected ? headline : 0)}</strong>
               <span className={usdwChange >= 0 ? "is-up" : "is-down"}>
-                {usdwChange >= 0 ? "+" : "-"}${money(Math.abs(usdwChange))}
+                {usdwChange >= 0 ? "+" : "-"}
+                {Math.abs(usdwChangePct).toFixed(2)}%
               </span>
             </div>
             <div className="portfolio-chips">
@@ -215,10 +226,11 @@ export function PortfolioPage() {
                 <button
                   key={item}
                   type="button"
+                  aria-pressed={range === item}
                   className={range === item ? "is-active" : ""}
                   onClick={() => setRange(item)}
                 >
-                  {item}
+                  <span>{item}</span>
                 </button>
               ))}
             </div>
@@ -246,13 +258,19 @@ export function PortfolioPage() {
                   className={accountTab === tab.id ? "is-active" : ""}
                   onClick={() => setAccountTab(tab.id)}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </div>
-            <button type="button" className="portfolio-filter">
-              Filter
-              <FilterIcon />
+            {/* Figma Filter trigger (50%). Filtering isn't built yet. */}
+            <button
+              type="button"
+              className="portfolio-filter"
+              disabled
+              title="Filters are coming soon"
+            >
+              <span>Filter</span>
+              <img src="/icons/funnel-20.svg" alt="" width={20} height={20} />
             </button>
           </div>
 
@@ -444,7 +462,7 @@ function PositionsTable({
         <span>Entry price</span>
         <span>
           Mark price
-          <CaretIcon />
+          <img src="/icons/caret-up-down-18.svg" alt="" aria-hidden width={18.72} height={18.72} />
         </span>
         <span>Unrealized P&L</span>
         <span className="portfolio-row-action">
@@ -477,14 +495,24 @@ function PositionsTable({
                 {up ? "" : "-"}${Math.abs(row.pnl).toLocaleString("en-US", { maximumFractionDigits: 0 })} (
                 {Math.abs(row.pct).toFixed(1)}%)
               </span>
+              {/* Figma row actions: the glass Sell button and a More button. */}
               <span className="portfolio-row-action">
                 <button
                   type="button"
-                  className="portfolio-sell"
+                  className="portfolio-sell is-glass"
                   disabled={busy || !canClose}
                   onClick={() => onClose(row.position)}
                 >
                   Sell
+                </button>
+                <button
+                  type="button"
+                  className="portfolio-more"
+                  disabled
+                  title="More actions are coming soon"
+                  aria-label="More actions"
+                >
+                  <img src="/icons/dots-three-vertical-16.svg" alt="" width={16} height={16} />
                 </button>
               </span>
             </div>
@@ -495,18 +523,3 @@ function PositionsTable({
   );
 }
 
-function FilterIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M3 4.5h14l-5.2 6.1v4.2l-3.6 1.6V10.6L3 4.5Z" fill="none" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-function CaretIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M8 3.2 11 6.4H5L8 3.2Zm0 9.6L5 9.6h6L8 12.8Z" fill="currentColor" />
-    </svg>
-  );
-}
