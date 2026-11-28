@@ -10,78 +10,26 @@ import { MobileTradeDock } from "./MobileTradeDock";
 import { OrderBook } from "./OrderBook";
 import { OrderForm } from "./OrderForm";
 import { PositionsPanel } from "./PositionsPanel";
+import { CardGlow, type GlowLayer } from "../CardGlow";
+import { PageBackdrop } from "../PageBackdrop";
+import { TradeFooter } from "./TradeFooter";
 import { TradeHeader } from "./TradeHeader";
 import { TradeSuccessModal } from "./TradeSuccessModal";
 import { TradingChart } from "./TradingChart";
 
 /**
- * The market card's two Figma fills: radial glows (lavender to purple 30% to
- * clear) at 10% opacity. Figma draws them as rotated ellipses, which a CSS
- * radial gradient can't do, so each is a rotated layer clipped to the card.
- * Sizes and centres are fractions of the card (1261 x 649.94 in Figma) so the
- * glows scale with it the way Figma's gradient transforms do.
+ * The market card's two Figma glows (card 1261 x 649.94 in Figma).
  *
  * The TradingView chart paints an opaque background, which would hide a glow
- * placed behind it, so the glow sits on top at 10%. Over the card's near-black
- * background that looks the same as a glow behind it. (A screen blend doesn't
- * reach into the chart's iframe in Chrome, so this uses normal blending.)
+ * placed behind it, so here the glow sits on top at 10%. Over the card's
+ * near-black background that looks the same as a glow behind it. (A screen
+ * blend doesn't reach into the chart's iframe in Chrome, so this uses normal
+ * blending.)
  */
-const GLOW =
-  "radial-gradient(closest-side, rgba(184,188,249,1) 0%, rgba(177,95,248,0.3) 46.2%, rgba(0,0,0,0) 100%)";
-
-function MarketGlow() {
-  return (
-    <div
-      aria-hidden
-      className="trade-market-glow pointer-events-none absolute inset-px z-[5] hidden overflow-hidden opacity-10 lg:block"
-    >
-      <span
-        className="absolute"
-        style={{
-          left: "-63.8%",
-          top: "3%",
-          width: "220.8%",
-          height: "52.59%",
-          transform: "rotate(37.2deg)",
-          backgroundImage: GLOW,
-        }}
-      />
-      <span
-        className="absolute"
-        style={{
-          left: "7.0%",
-          top: "-40.77%",
-          width: "134.57%",
-          height: "89.26%",
-          transform: "rotate(30.1deg)",
-          backgroundImage: GLOW,
-        }}
-      />
-    </div>
-  );
-}
-
-/** Figma footer badge: 6px dot and 11px label, 5px apart, on a 15% tint. */
-function FooterBadge({
-  dot,
-  className,
-  children,
-}: {
-  dot: string;
-  className: string;
-  children: string;
-}) {
-  return (
-    <span
-      className={`flex items-center justify-center gap-[5px] px-2.5 py-[5px] backdrop-blur-[5.4px] ${className}`}
-    >
-      <img src={dot} alt="" width={6} height={6} className="block shrink-0" />
-      <span className="text-[11px] uppercase leading-normal tracking-[-0.22px] [text-box:trim-both_cap_alphabetic]">
-        {children}
-      </span>
-    </span>
-  );
-}
+const MARKET_GLOW: readonly GlowLayer[] = [
+  { left: "-63.8%", top: "3%", width: "220.8%", height: "52.59%", rotate: 37.2 },
+  { left: "7.0%", top: "-40.77%", width: "134.57%", height: "89.26%", rotate: 30.1 },
+];
 
 /** Book sits beside the chart only from this width (matches example/frontend). */
 const BOOK_BESIDE_CHART = "(min-width: 1280px)";
@@ -121,7 +69,8 @@ export function TradePage() {
   };
 
   return (
-    <div className="trade-desk relative flex h-dvh min-h-0 flex-col overflow-hidden text-paper lg:min-h-[780px]">
+    <div className="trade-desk relative isolate flex h-dvh min-h-0 flex-col overflow-hidden text-paper lg:min-h-[780px]">
+      <PageBackdrop bottom />
       <div className="noise opacity-[0.06]" />
       {privyStatus === "ready" ? <PrivyAddressSync onAddress={desk.onPrivyAddress} /> : null}
 
@@ -148,7 +97,7 @@ export function TradePage() {
                   flat colour (so it changes nothing) and a blur here would stop
                   the dropdown's own blur reaching the account panel. */}
               <div className="max-lg:contents lg:relative lg:z-[1] lg:isolate lg:flex lg:shrink-0 lg:flex-col lg:gap-2.5 lg:bg-black/[0.82] lg:p-[11px] lg:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]">
-                <MarketGlow />
+                <CardGlow layers={MARKET_GLOW} className="z-[5]" />
                 <div className="max-lg:order-1 lg:p-2.5">
                   <MarketTicker
                     marketKey={desk.marketKey}
@@ -230,21 +179,7 @@ export function TradePage() {
         </div>
       </div>
 
-      {/* Figma "Footer": 32px tall, #121315, 25px side padding, 8px top and
-          6px bottom. Two status badges on the left, version on the right. */}
-      <footer className="relative z-20 hidden h-8 shrink-0 items-center justify-between bg-[#121315] px-[25px] pt-2 pb-1.5 lg:flex">
-        <div className="flex items-start gap-2.5">
-          <FooterBadge dot="/icons/dot-online.svg" className="bg-[rgba(19,221,197,0.15)] text-[#13ddc5]">
-            Online
-          </FooterBadge>
-          <FooterBadge dot="/icons/dot-private.svg" className="bg-[rgba(177,95,248,0.15)] text-[#b15ff8]">
-            Private settlement
-          </FooterBadge>
-        </div>
-        <span className="text-[12px] uppercase leading-normal tracking-[-0.24px] text-white opacity-50 [text-box:trim-both_cap_alphabetic]">
-          Powered by Winx v1.0
-        </span>
-      </footer>
+      <TradeFooter />
 
       <MobileTradeDock
         active={navActive}

@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { CardGlow } from "../CardGlow";
+import { PageBackdrop } from "../PageBackdrop";
+import { MARKETS_GLOW } from "./markets-glow";
+import { TradeFooter } from "../trade/TradeFooter";
 import { TradeHeader } from "../trade/TradeHeader";
 import { MobileTradeDock } from "../trade/MobileTradeDock";
 import { useListedMarkets } from "../../hooks/useListedMarkets";
@@ -74,9 +78,29 @@ export function MarketsPage() {
     return out;
   }, [listed, quotes, range]);
 
+  // Figma timeframe selector: sits at the right of the card's top row.
+  const ranges = (
+    <div className="markets-ranges" role="group" aria-label="Range">
+      {MARKET_RANGES.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={range === item.id}
+          className={range === item.id ? "is-active" : ""}
+          onClick={() => setRange(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="markets-page">
+      <PageBackdrop streak="markets" />
       <TradeHeader />
+      {/* Figma "Markets": a 1368px column, the 40px title, then 50px down the
+          tabs, and 17px under them the card. */}
       <main className="markets-main">
         <h1 className="markets-title">Markets</h1>
 
@@ -96,40 +120,37 @@ export function MarketsPage() {
               className={`markets-tab ${tab === id ? "is-active" : ""}`}
               onClick={() => setTab(id)}
             >
-              {label}
+              <span>{label}</span>
             </button>
           ))}
         </div>
 
         <div className="markets-stage">
-          <div className="markets-ranges" role="group" aria-label="Range">
-            {MARKET_RANGES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={range === item.id ? "is-active" : ""}
-                onClick={() => setRange(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
           {listed == null ? (
             <section className="markets-panel markets-loading">Loading listed markets…</section>
           ) : tab === "heatmap" ? (
-            <MarketsHeatmap listed={listed} quotes={quotes} moves={moves} />
+            <MarketsHeatmap listed={listed} quotes={quotes} moves={moves} ranges={ranges} />
           ) : (
             <section className="markets-panel">
-              <label className="markets-search">
-                <span className="sr-only">Search markets</span>
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search"
-                />
-                <img src="/logo/markets/search.svg" alt="" width={16} height={16} className="markets-search-icon" />
-              </label>
+              <CardGlow layers={MARKETS_GLOW} className="-z-10" />
+              <div className="markets-toolbar">
+                <label className="markets-search">
+                  <span className="sr-only">Search markets</span>
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search"
+                  />
+                  <img
+                    src="/icons/magnifying-glass-16.svg"
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="markets-search-icon"
+                  />
+                </label>
+                {ranges}
+              </div>
               <MarketsTable
                 listed={listed}
                 quotes={quotes}
@@ -145,6 +166,7 @@ export function MarketsPage() {
           )}
         </div>
       </main>
+      <TradeFooter />
       <MobileTradeDock active="markets" showSides={false} />
     </div>
   );

@@ -308,7 +308,9 @@ function SortButton({
     <button
       type="button"
       className={active ? "is-active" : undefined}
-      aria-sort={active ? (dir < 0 ? "descending" : "ascending") : "none"}
+      aria-label={
+        active ? `${label}, sorted ${dir < 0 ? "descending" : "ascending"}` : `Sort by ${label}`
+      }
       onClick={onClick}
     >
       <span>{label}</span>

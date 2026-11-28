@@ -240,38 +240,36 @@ export function MarketsTable({
         })
       )}
     </div>
-    <div className="markets-table-scroll hidden lg:block">
-      <table className="markets-table">
-        <thead>
-          <tr>
-            <SortHead label="Market" sortKey="market" sort={sort} onSort={toggle} />
-            <SortHead label="Mark price" sortKey="mark" sort={sort} onSort={toggle} />
-            <SortHead label="Oracle price" sortKey="oracle" sort={sort} onSort={toggle} />
-            <SortHead label="Premium" sortKey="premium" sort={sort} onSort={toggle} />
-            <SortHead label={changeLabel} sortKey="change" sort={sort} onSort={toggle} />
-            <th>Chart</th>
-            <SortHead label="Funding" sortKey="funding" sort={sort} onSort={toggle} />
-            <SortHead label="Open interest" sortKey="oi" sort={sort} onSort={toggle} />
-            <SortHead label="24h volume" sortKey="volume" sort={sort} onSort={toggle} />
-            <SortHead label="PnL" sortKey="pnl" sort={sort} onSort={toggle} />
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+    {/* Figma Markets table: a 26.72px header (labels at 50%, sortable columns
+        with the caret-up-down icon) and 42px rows 10px apart, in fixed
+        columns (see .markets-grid in app.css). Values are Satoshi 14px. */}
+    <div className="markets-grid hidden lg:block">
+      <div className="markets-grid-inner">
+        <div className="markets-grid-head">
+          <HeadCell label="Market" sortKey="market" sort={sort} onSort={toggle} />
+          <HeadCell label="Mark price" sortKey="mark" sort={sort} onSort={toggle} />
+          <HeadCell label="Oracle price" />
+          <HeadCell label="Premium" />
+          <HeadCell label={changeLabel} sortKey="change" sort={sort} onSort={toggle} />
+          <HeadCell label="Chart" />
+          <HeadCell label="Funding" sortKey="funding" sort={sort} onSort={toggle} />
+          <HeadCell label="Open interest" sortKey="oi" sort={sort} onSort={toggle} />
+          <HeadCell label="24h volume" sortKey="volume" sort={sort} onSort={toggle} />
+          <HeadCell label="PnL" />
+          <span />
+        </div>
+        <div className="markets-grid-body">
           {rows.length === 0 ? (
-            <tr>
-              <td className="markets-empty" colSpan={11}>
-                {watchOnly
-                  ? "No markets on your watchlist. Star one from Overview."
-                  : query
-                    ? "No listed market matches that search."
-                    : "No markets are listed on the engine."}
-              </td>
-            </tr>
+            <p className="markets-empty">
+              {watchOnly
+                ? "No markets on your watchlist. Star one from Overview."
+                : query
+                  ? "No listed market matches that search."
+                  : "No markets are listed on the engine."}
+            </p>
           ) : (
             rows.map((row) => {
               const up = (row.changePct ?? 0) >= 0;
-              const premiumUp = (row.premium ?? 0) >= 0;
               const funding = row.stats?.fundingRate;
               const fundingUp = (funding ?? 0) >= 0;
               const countdown =
@@ -279,108 +277,109 @@ export function MarketsTable({
                   ? fundingClock(row.stats.nextFundingTs / 1000 - now)
                   : null;
               const decimals = row.priceDecimals;
+              const starred = watched.has(row.key);
               return (
-                <tr key={row.key}>
-                  <td>
-                    <div className="markets-name">
-                      <button
-                        type="button"
-                        className={`markets-star ${watched.has(row.key) ? "is-on" : ""}`}
-                        aria-label={watched.has(row.key) ? `Unstar ${row.label}` : `Star ${row.label}`}
-                        aria-pressed={watched.has(row.key)}
-                        onClick={() => onToggleWatch(row.key)}
-                      >
-                        <Star filled={watched.has(row.key)} />
-                      </button>
-                      <img src={row.icon} alt="" width={22} height={22} />
-                      <span>{row.label}</span>
-                      <span className="markets-lev">{row.maxLeverage}X</span>
-                    </div>
-                  </td>
-                  <td>{formatUsd(row.stats?.markPrice, decimals)}</td>
-                  <td className="is-muted">
+                <div key={row.key} className="markets-grid-row">
+                  <div className="markets-name">
+                    <button
+                      type="button"
+                      className="markets-star"
+                      aria-label={starred ? `Unstar ${row.label}` : `Star ${row.label}`}
+                      aria-pressed={starred}
+                      onClick={() => onToggleWatch(row.key)}
+                    >
+                      <img
+                        src={starred ? "/icons/star-filled-16.svg" : "/icons/star-16.svg"}
+                        alt=""
+                        width={16}
+                        height={16}
+                      />
+                    </button>
+                    <img src={row.icon} alt="" width={19} height={19} className="markets-name-icon" />
+                    <span className="markets-name-pair">{row.label}</span>
+                    <span className="markets-lev">
+                      <span>{row.maxLeverage}x</span>
+                    </span>
+                  </div>
+                  <span>{formatUsd(row.stats?.markPrice, decimals)}</span>
+                  <span>
                     {formatUsd(row.stats?.indexPrice, decimals === 0 ? 0 : Math.max(decimals, 1))}
-                  </td>
-                  <td className={row.premium == null ? "" : premiumUp ? "is-up" : "is-down"}>
-                    {row.premium == null ? "—" : `${premiumUp ? "+" : ""}${row.premium.toFixed(3)}%`}
-                  </td>
-                  <td className={row.changePct == null ? "" : up ? "is-up" : "is-down"}>
+                  </span>
+                  {/* Figma shows premium and PnL in white either way. */}
+                  <span>
+                    {row.premium == null
+                      ? "—"
+                      : `${row.premium >= 0 ? "+" : ""}${row.premium.toFixed(3)}%`}
+                  </span>
+                  <span className={row.changePct == null ? "" : up ? "is-up" : "is-down"}>
                     {row.change == null || row.changePct == null
                       ? "—"
-                      : `${moneyChange(row.change)}/${Math.abs(row.changePct).toFixed(2)}%`}
-                  </td>
-                  <td>
+                      : `${up ? "" : "-"}${moneyChange(row.change)}/${Math.abs(row.changePct).toFixed(2)}%`}
+                  </span>
+                  <span>
                     <Sparkline closes={row.closes} up={up} />
-                  </td>
-                  <td className={funding == null ? "" : fundingUp ? "is-up" : "is-down"}>
+                  </span>
+                  <span className={funding == null ? "" : fundingUp ? "is-up" : "is-down"}>
                     {funding == null
                       ? "—"
                       : `${funding.toFixed(4)}%${countdown ? ` ${countdown}` : ""}`}
-                  </td>
-                  <td>{bookUsd(row.stats?.openInterest)}</td>
-                  <td>{bookUsd(row.stats?.dailyVolume)}</td>
-                  <td className={row.pnlPct == null ? "is-muted" : row.pnlPct >= 0 ? "is-up" : "is-down"}>
-                    {row.pnlPct == null
-                      ? "—"
-                      : `${row.pnlPct < 0 ? "" : ""}${row.pnlPct.toFixed(1)}%`}
-                  </td>
-                  <td className="markets-trade-cell">
+                  </span>
+                  <span>{bookUsd(row.stats?.openInterest)}</span>
+                  <span>{bookUsd(row.stats?.dailyVolume)}</span>
+                  <span>{row.pnlPct == null ? "—" : `${row.pnlPct.toFixed(1)}%`}</span>
+                  <span className="markets-trade-cell">
                     <Link className="markets-trade" to={`/trade?market=${row.key}`}>
                       Trade
                     </Link>
-                  </td>
-                </tr>
+                  </span>
+                </div>
               );
             })
           )}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
     </>
   );
 }
 
-function SortHead({
+/**
+ * Figma header cell: the label at 50%; sortable columns add the
+ * caret-up-down icon (50% in the file) 4px after it. Figma shows no
+ * active-sort styling, so the direction is exposed to assistive tech only.
+ */
+function HeadCell({
   label,
   sortKey,
   sort,
   onSort,
 }: {
   label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" };
-  onSort: (key: SortKey) => void;
+  sortKey?: SortKey;
+  sort?: { key: SortKey; dir: "asc" | "desc" };
+  onSort?: (key: SortKey) => void;
 }) {
+  if (!sortKey || !sort || !onSort) {
+    return (
+      <span className="markets-head-cell">
+        <span>{label}</span>
+      </span>
+    );
+  }
   const active = sort.key === sortKey;
   return (
-    <th>
-      <button type="button" className={active ? "is-active" : ""} onClick={() => onSort(sortKey)}>
-        {label}
-        <Caret dir={active ? sort.dir : undefined} />
-      </button>
-    </th>
-  );
-}
-
-function Caret({ dir }: { dir?: "asc" | "desc" }) {
-  return (
-    <svg width="8" height="10" viewBox="0 0 8 10" aria-hidden className="markets-caret">
-      <path d="M4 1.2 6.4 4H1.6L4 1.2Z" fill={dir === "asc" ? "#fff" : "rgba(255,255,255,0.35)"} />
-      <path d="M4 8.8 1.6 6h4.8L4 8.8Z" fill={dir === "desc" ? "#fff" : "rgba(255,255,255,0.35)"} />
-    </svg>
-  );
-}
-
-function Star({ filled }: { filled: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path
-        d="M7 1.4 8.5 4.7l3.6.4-2.7 2.4.8 3.5L7 9.3 3.8 11l.8-3.5L1.9 5.1l3.6-.4L7 1.4Z"
-        fill={filled ? "#fff" : "none"}
-        stroke={filled ? "#fff" : "rgba(255,255,255,0.72)"}
-        strokeWidth="1"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <button
+      type="button"
+      className="markets-head-cell"
+      aria-label={
+        active
+          ? `${label}, sorted ${sort.dir === "asc" ? "ascending" : "descending"}`
+          : `Sort by ${label}`
+      }
+      onClick={() => onSort(sortKey)}
+    >
+      <span>{label}</span>
+      <img src="/icons/caret-up-down-18.svg" alt="" aria-hidden width={18.72} height={18.72} />
+    </button>
   );
 }
