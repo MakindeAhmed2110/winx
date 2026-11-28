@@ -160,7 +160,7 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
         ref={flipRoot}
         // Side padding sits inside the scroller: a vertical scroller also clips
         // sideways, and the slider knob overhangs the content edge at max.
-        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto px-[10px] pt-9 pb-[27px]"
+        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto px-[10px] pt-4 pb-[27px]"
       >
         <div className="flex flex-col gap-9">
           <SideSwitch isLong={isLong} onChange={setIsLong} />
