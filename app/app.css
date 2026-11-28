@@ -5355,6 +5355,38 @@ button.markets-head-cell:hover span {
   }
 }
 
+/* Figma "Portfolio" desktop: page glows come from PageBackdrop, the title is
+   Orbitron 40px trimmed to cap height, 47.66px under the header. */
+@media (min-width: 1024px) {
+  .portfolio-page {
+    isolation: isolate;
+    overflow: clip;
+  }
+
+  .portfolio-glow {
+    display: none;
+  }
+
+  .portfolio-main {
+    padding: 47.66px 25px 22px;
+  }
+
+  .portfolio-head h1 {
+    font-size: 40px;
+    letter-spacing: 3.2px;
+    line-height: normal;
+    text-box: trim-both cap alphabetic;
+  }
+
+  .portfolio-actions > button:not(.portfolio-gear) {
+    padding: 0 24px;
+  }
+
+  .portfolio-overview {
+    margin-top: 26.34px;
+  }
+}
+
 @media (min-width: 1024px) {
   .portfolio-mobile-switch {
     display: none;

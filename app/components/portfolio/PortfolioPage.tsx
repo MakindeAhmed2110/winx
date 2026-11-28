@@ -14,6 +14,8 @@ import {
 import type { LocalPosition } from "../../lib/privacy/notes";
 import { MobileTradeDock } from "../trade/MobileTradeDock";
 import { TradeHeader } from "../trade/TradeHeader";
+import { TradeFooter } from "../trade/TradeFooter";
+import { PageBackdrop } from "../PageBackdrop";
 import { TradeSuccessModal } from "../trade/TradeSuccessModal";
 import { useUsdwSeries } from "../../hooks/useUsdwSeries";
 import { PortfolioCashModal } from "./PortfolioCashModal";
@@ -122,6 +124,7 @@ export function PortfolioPage() {
   return (
     <div className={`portfolio-page is-${pane}`}>
       <div className="portfolio-glow" aria-hidden="true" />
+      <PageBackdrop streak="portfolio" />
       {privyStatus === "ready" ? <PrivyAddressSync onAddress={desk.onPrivyAddress} /> : null}
       <TradeHeader onFaucetClaimed={() => void desk.refetchUsdw?.()} />
 
@@ -302,13 +305,7 @@ export function PortfolioPage() {
         </section>
       </main>
 
-      <footer className="portfolio-footer">
-        <span>
-          <i />
-          Online
-        </span>
-        <span>Powered by Winx v1.0</span>
-      </footer>
+      <TradeFooter />
 
       <MobileTradeDock active="portfolio" showSides={false} />
 
