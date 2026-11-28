@@ -56,6 +56,7 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
   const market = markets[marketKey];
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [tab, setTab] = useState<TabId>("all");
   const [sortKey, setSortKey] = useState<SortKey>("market");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
@@ -159,23 +160,39 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
         aria-label="Select market"
         aria-hidden={!open}
       >
+        {/* Figma search: Idle reads SEARCH; focused it reads "Type a market
+            name" with a brighter edge; with text, an X clears it. */}
         <div className="market-picker-search">
           <input
             ref={searchRef}
-            type="search"
+            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder={searchFocused ? "Type a market name" : "Search"}
             aria-label="Search markets"
+            autoComplete="off"
+            spellCheck={false}
           />
-          <span className="market-picker-search-icon" aria-hidden>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="6.25" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M16 16.5L20.5 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </span>
+          {query ? (
+            <button
+              type="button"
+              className="market-picker-search-clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+            >
+              <img src="/icons/x-16.svg" alt="" width={16} height={16} />
+            </button>
+          ) : (
+            <img src="/icons/magnifying-glass-16.svg" alt="" aria-hidden width={16} height={16} />
+          )}
         </div>
 
+        {/* Figma tabs: the account-panel tab style, with a 28px star tab first. */}
         <div className="market-picker-tabs" role="tablist">
           {TABS.map((item) => (
             <button
@@ -184,10 +201,16 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
               role="tab"
               aria-selected={tab === item.id}
               aria-label={item.label}
-              className={tab === item.id ? "is-active" : undefined}
+              className={`trade-tab ${item.id === "watch" ? "market-picker-fav" : ""} ${
+                tab === item.id ? "is-active" : ""
+              }`}
               onClick={() => setTab(item.id)}
             >
-              {item.id === "watch" ? <StarIcon filled={tab === "watch"} /> : item.label}
+              {item.id === "watch" ? (
+                <img src="/icons/star-16.svg" alt="" width={16} height={16} />
+              ) : (
+                <span>{item.label}</span>
+              )}
             </button>
           ))}
         </div>
@@ -278,25 +301,19 @@ function SortButton({
   dir: 1 | -1;
   onClick: () => void;
 }) {
+  // Figma header cell: label at 50% and the caret-up-down icon (50% in the
+  // file), 4px apart. Figma shows no active-sort styling, so the direction is
+  // exposed to assistive tech only.
   return (
-    <button type="button" className={active ? "is-active" : undefined} onClick={onClick}>
-      {label}
-      <span aria-hidden>{active ? (dir < 0 ? "↓" : "↑") : "↕"}</span>
+    <button
+      type="button"
+      className={active ? "is-active" : undefined}
+      aria-sort={active ? (dir < 0 ? "descending" : "ascending") : "none"}
+      onClick={onClick}
+    >
+      <span>{label}</span>
+      <img src="/icons/caret-up-down-18.svg" alt="" aria-hidden width={18.72} height={18.72} />
     </button>
-  );
-}
-
-function StarIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M12 3.2l2.4 5.1 5.6.7-4.1 3.8 1.1 5.5L12 15.8 7 18.3l1.1-5.5L4 9l5.6-.7L12 3.2z"
-        fill={filled ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
@@ -336,24 +353,33 @@ function MarketRow({
       aria-selected={active}
     >
       <div className="market-picker-market">
+        {/* Figma: solid star when watched, outline star when not. */}
         <button
           type="button"
-          className={`market-picker-star ${watched ? "is-on" : ""}`}
+          className="market-picker-star"
           aria-label={watched ? `Remove ${m.label} from watchlist` : `Add ${m.label} to watchlist`}
           aria-pressed={watched}
           onClick={() => onToggleWatch(marketKey)}
         >
-          <StarIcon filled={watched} />
+          <img
+            src={watched ? "/icons/star-filled-16.svg" : "/icons/star-16.svg"}
+            alt=""
+            width={16}
+            height={16}
+          />
         </button>
         <button type="button" className="market-picker-select" onClick={() => onPick(marketKey)}>
-          <img src={m.icon} alt="" width={22} height={22} />
+          <img src={m.icon} alt="" width={19} height={19} />
           <span className="market-picker-pair">{m.label}</span>
-          <span className="market-picker-lev">{m.maxLeverage}X</span>
+          <span className="market-picker-lev">
+            <span>{m.maxLeverage}x</span>
+          </span>
         </button>
       </div>
       <button type="button" className="market-picker-cell tabular-nums" onClick={() => onPick(marketKey)}>
         {price == null ? "—" : formatUsd(price, m.priceDecimals === 0 ? 0 : m.priceDecimals)}
       </button>
+      {/* Figma: "$1,842/1.93%" in green; losses in red with a minus sign. */}
       <button
         type="button"
         className={`market-picker-cell tabular-nums ${up === true ? "is-up" : up === false ? "is-down" : ""}`}
@@ -361,8 +387,8 @@ function MarketRow({
       >
         {change == null || changePct == null
           ? "—"
-          : `${up ? "+" : "−"}$${Math.abs(change).toLocaleString("en-US", {
-              maximumFractionDigits: change >= 100 ? 0 : 2,
+          : `${up ? "" : "-"}$${Math.abs(change).toLocaleString("en-US", {
+              maximumFractionDigits: Math.abs(change) >= 100 ? 0 : 2,
             })}/${Math.abs(changePct).toFixed(2)}%`}
       </button>
       <button type="button" className="market-picker-cell tabular-nums" onClick={() => onPick(marketKey)}>

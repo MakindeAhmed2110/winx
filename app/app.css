@@ -1747,16 +1747,26 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   font-family: var(--font-sans);
 }
 
+/* Figma "Market selector": a 724px glass panel (black 22%, 1px white 7% inside
+   stroke, 40.95px backdrop blur) with 10px padding and 12px between the
+   search, the tabs and the table. On desktop it opens 24px under the pair,
+   its left edge in line with the ticker row (10px left of the pair). */
 .market-picker-panel {
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
   z-index: 50;
-  width: min(860px, calc(100vw - 1.5rem));
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(724px, calc(100vw - 1.5rem));
+  padding: 10px;
+  border: 0;
   border-radius: 0;
-  background: #000;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  -webkit-backdrop-filter: blur(40.95px);
+  backdrop-filter: blur(40.95px);
   overflow: hidden;
   transform-origin: top left;
   opacity: 0;
@@ -1781,53 +1791,85 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   visibility: visible;
 }
 
-.market-picker-search {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 14px 14px 0;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 0;
-  background: #000;
+@media (min-width: 1024px) {
+  .market-picker-panel {
+    top: calc(100% + 24px);
+    left: -10px;
+  }
 }
 
-.market-picker-search-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
+/* Figma search field: 32px, white 5% fill, 1px white 15% inside stroke,
+   Satoshi 12px. Idle it reads SEARCH (caps, 50%); focused it reads "Type a
+   market name" and the stroke brightens to 60%; with text, an X clears it. */
+.market-picker-search {
+  display: flex;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.72);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: box-shadow 200ms cubic-bezier(0, 0, 0.58, 1);
+}
+
+.market-picker-search:focus-within,
+.market-picker-search:has(input:not(:placeholder-shown)) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 .market-picker-search input {
   flex: 1;
   min-width: 0;
+  height: 16px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: #fff;
+  caret-color: #fff;
   font-family: var(--font-sans);
   font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: -0.24px;
   outline: none;
 }
 
 .market-picker-search input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
 }
 
+.market-picker-search input:not(:focus)::placeholder {
+  text-transform: uppercase;
+}
+
+.market-picker-search img {
+  display: block;
+  flex-shrink: 0;
+}
+
+.market-picker-search-clear {
+  display: flex;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Figma tabs row (28px): the star tab (28px tall) then the account-panel
+   style text tabs (.trade-tab). It scrolls sideways on narrow screens, which
+   also clips vertically, so 3px of bottom padding (offset by the margin)
+   leaves room for the selected tab's stroke. */
 .market-picker-tabs {
   display: flex;
-  gap: 0;
-  margin-top: 12px;
-  padding: 0 10px;
+  flex-shrink: 0;
+  align-items: center;
+  height: 31px;
+  padding-bottom: 3px;
+  margin-bottom: -3px;
   overflow-x: auto;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   scrollbar-width: none;
 }
 
@@ -1835,107 +1877,117 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   display: none;
 }
 
-.market-picker-tabs button {
+/* Two classes so it wins over .trade-tab's 19px, which comes later. */
+.trade-tab.market-picker-fav {
+  height: 28px;
+}
+
+.market-picker-fav img {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  min-width: 42px;
-  padding: 10px 14px 11px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
+  display: block;
 }
 
-.market-picker-tabs button:hover {
-  color: #fff;
-}
-
-.market-picker-tabs button.is-active {
-  color: #fff;
-  background: #2c2c2c;
-}
-
-.market-picker-tabs button.is-active::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: #fff;
-}
-
-.market-picker-head,
-.market-picker-select {
-  display: grid;
-  grid-template-columns: minmax(190px, 1.7fr) 0.9fr 1.25fr 0.8fr;
-  gap: 0.75rem;
-  align-items: center;
-}
-
+/* Figma table header: a 26.72px row (10px side padding), labels at 50% with
+   the caret-up-down icon 4px after, a 1px white 20% line under it, then
+   10.94px plus the 20px gap before the first row. Columns: market (fills),
+   then 110, 130 and 116px. */
 .market-picker-head {
-  padding: 0.85rem 1rem 0.55rem;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 26.72px;
+  padding: 0 10px;
+  margin-bottom: 18.94px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .market-picker-head button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 4px;
+  padding: 0;
   border: 0;
   background: transparent;
-  padding: 0;
+  color: #fff;
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.24px;
+  line-height: normal;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.38);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.market-picker-head button:nth-child(n + 2) {
-  justify-content: flex-end;
+.market-picker-head button span {
+  opacity: 0.5;
+  text-box: trim-both cap alphabetic;
+  transition: opacity 200ms cubic-bezier(0, 0, 0.58, 1);
 }
 
-.market-picker-head button.is-active,
-.market-picker-head button:hover {
-  color: rgba(255, 255, 255, 0.78);
+.market-picker-head button:hover span {
+  opacity: 0.8;
 }
 
+.market-picker-head button img {
+  display: block;
+  flex-shrink: 0;
+}
+
+.market-picker-head > :first-child,
+.market-picker-market {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.market-picker-head > :nth-child(2),
+.market-picker-row > :nth-child(2) {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.market-picker-head > :nth-child(3),
+.market-picker-row > :nth-child(3) {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.market-picker-head > :nth-child(4),
+.market-picker-row > :nth-child(4) {
+  width: 116px;
+  flex-shrink: 0;
+}
+
+/* Figma rows: 35px (10px side padding), 10px apart; ten fit before the list
+   scrolls, with 9px under the last one as in Figma. */
 .market-picker-list {
   display: flex;
   flex-direction: column;
-  max-height: 320px;
+  gap: 10px;
+  max-height: 449px;
+  padding-bottom: 9px;
   overflow: auto;
-  padding-bottom: 0.35rem;
 }
 
 .market-picker-empty {
-  padding: 1.5rem 1rem 1.75rem;
+  padding: 4px 10px 9px;
   text-align: center;
   font-family: var(--font-sans);
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  letter-spacing: -0.24px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .market-picker-row {
-  display: grid;
-  grid-template-columns: minmax(210px, 1.7fr) 0.9fr 1.25fr 0.8fr;
-  gap: 0.75rem;
+  display: flex;
+  flex-shrink: 0;
   align-items: center;
-  padding: 0 1rem;
+  height: 35px;
+  padding: 0 10px;
   opacity: 0;
   transform: translateY(6px);
   animation: market-row-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.58, 1);
 }
 
 .market-picker:not(.is-open) .market-picker-row {
@@ -1943,92 +1995,121 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   opacity: 0;
 }
 
-.market-picker-row:hover,
-.market-picker-row.is-active {
+.market-picker-row:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.market-picker-star {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 36px;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.72);
-  cursor: pointer;
-}
-
-.market-picker-star.is-on {
-  color: #fff;
-}
-
-.market-picker-select {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  padding: 0.72rem 0;
-  color: #fff;
-  cursor: pointer;
-}
-
+/* Figma row: star (16), logo (19, round), pair, leverage badge, 10px apart. */
 .market-picker-market {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
+  gap: 10px;
 }
 
-.market-picker-market img {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
+.market-picker-star {
+  display: flex;
   flex-shrink: 0;
-}
-
-.market-picker-pair {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.market-picker-lev {
-  display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.35rem;
-  border-radius: 2px;
-  background: #2a2a2a;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.market-picker-cell {
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
   border: 0;
   background: transparent;
-  padding: 0.72rem 0;
+  cursor: pointer;
+}
+
+.market-picker-star img {
+  display: block;
+}
+
+.market-picker-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.market-picker-select > img {
+  display: block;
+  width: 19px;
+  height: 19px;
+  border-radius: 9.5px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+/* Figma pair: Satoshi 16px, -2% tracking, caps. */
+.market-picker-pair {
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  text-align: right;
-  color: rgba(255, 255, 255, 0.92);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.32px;
+  line-height: normal;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-box: trim-both cap alphabetic;
+}
+
+/* Figma leverage badge: 4px padding, white 5% fill, 1px white 15% stroke,
+   70% opacity; Satoshi 11px caps. */
+.market-picker-lev {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 0.7;
+}
+
+.market-picker-lev span {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: -0.22px;
+  line-height: normal;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  text-box: trim-both cap alphabetic;
+}
+
+/* Figma stats: Satoshi 14px, -2% tracking, caps, left-aligned. */
+.market-picker-cell {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.28px;
+  line-height: normal;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .market-picker-cell.is-up {
-  color: #3dff9a;
+  color: #10edbf;
 }
 
 .market-picker-cell.is-down {
-  color: #ff5d73;
+  color: #f63c6b;
 }
 
 @keyframes market-row-in {
@@ -2042,18 +2123,30 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   }
 }
 
+/* Phones: a narrower panel without the volume column or the leverage badge
+   (the mobile ticker already shows leverage under the pair). */
 @media (max-width: 720px) {
   .market-picker-panel {
     width: min(100vw - 1.5rem, 420px);
   }
 
-  .market-picker-head,
-  .market-picker-row {
-    grid-template-columns: minmax(150px, 1.4fr) 0.8fr 1fr;
+  .market-picker-lev,
+  .market-picker-head button img {
+    display: none;
   }
 
-  .market-picker-head button:nth-child(4),
-  .market-picker-row > .market-picker-cell:last-child {
+  .market-picker-head > :nth-child(2),
+  .market-picker-row > :nth-child(2) {
+    width: 70px;
+  }
+
+  .market-picker-head > :nth-child(3),
+  .market-picker-row > :nth-child(3) {
+    width: 100px;
+  }
+
+  .market-picker-head > :nth-child(4),
+  .market-picker-row > :nth-child(4) {
     display: none;
   }
 }

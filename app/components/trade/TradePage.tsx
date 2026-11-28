@@ -141,10 +141,13 @@ export function TradePage() {
                 rest of the height; below ~1117px tall the column scrolls. */}
             <div className="no-scrollbar max-lg:contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 lg:overflow-y-auto">
               {/* Figma market card: black 82% with two faint purple glows, a 1px
-                  white 7% inside stroke, 40.95px backdrop blur and 10px padding
-                  inside the stroke. z-[1] keeps the market dropdown above the
-                  account panel where it hangs past the card. */}
-              <div className="max-lg:contents lg:relative lg:z-[1] lg:isolate lg:flex lg:shrink-0 lg:flex-col lg:gap-2.5 lg:bg-black/[0.82] lg:p-[11px] lg:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] lg:backdrop-blur-[40.95px]">
+                  white 7% inside stroke and 10px padding inside the stroke.
+                  z-[1] keeps the market dropdown above the account panel where
+                  it hangs past the card. Figma also gives the card a 40.95px
+                  backdrop blur; it's left off because the page behind is a
+                  flat colour (so it changes nothing) and a blur here would stop
+                  the dropdown's own blur reaching the account panel. */}
+              <div className="max-lg:contents lg:relative lg:z-[1] lg:isolate lg:flex lg:shrink-0 lg:flex-col lg:gap-2.5 lg:bg-black/[0.82] lg:p-[11px] lg:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]">
                 <MarketGlow />
                 <div className="max-lg:order-1 lg:p-2.5">
                   <MarketTicker
