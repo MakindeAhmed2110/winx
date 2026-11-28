@@ -11,16 +11,34 @@ import {
 type BookTab = "book" | "trades";
 type SizeUnit = "coin" | "usd";
 
+/** Figma trims text boxes to cap height; this keeps boxes the same size here. */
+const TRIM = "[text-box:trim-both_cap_alphabetic]";
+/** Figma book text: Satoshi Regular 12px, -2% tracking, uppercase. */
+const T12 = `text-[12px] uppercase leading-normal tracking-[-0.24px] tabular-nums ${TRIM}`;
+/** Figma price colours: asks #f63c6b, bids #10edbf (trades: #f73b6b / #0fedbf). */
+const ASK_TEXT = "text-[#f63c6b]";
+const BID_TEXT = "text-[#10edbf]";
+
 const ASK_GRADIENT =
   "linear-gradient(90deg, rgba(246,61,109,0.2) 2.8846%, rgba(246,61,109,0.116) 20.192%, rgba(246,61,109,0.073) 81.25%, rgba(246,61,109,0) 100%)";
 const BID_GRADIENT =
   "linear-gradient(90deg, rgba(16,237,191,0.2) 2.8846%, rgba(16,237,191,0.116) 20.192%, rgba(16,237,191,0.073) 81.25%, rgba(16,237,191,0) 100%)";
+/** Figma selected tab: white 10% under a purple-to-lavender fade at the bottom. */
+const TAB_FILL =
+  "linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(177,95,248,0.06) 76.923%, rgba(184,188,249,0.2) 100%), linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1))";
 
-export const ORDER_BOOK_WIDTH = 352;
+/** Figma "Order book panel": 342px wide. */
+export const ORDER_BOOK_WIDTH = 342;
 const COLLAPSED_WIDTH = 40;
 const EASE = "duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]";
 const DEPTH = 6;
-const TRADE_ROWS = 13;
+/** Figma Trades tab: 14 rows under the header. */
+const TRADE_ROWS = 14;
+
+const TABS = [
+  ["book", "Order book"],
+  ["trades", "Trades"],
+] as const;
 
 /** Price grouping steps per market (Extended tick sizes upward). */
 const TICKS: Record<MarketKey, number[]> = {
@@ -31,6 +49,11 @@ const TICKS: Record<MarketKey, number[]> = {
 const tickDecimals = (tick: number) =>
   tick >= 1 ? 0 : (String(tick).split(".")[1]?.length ?? 0);
 
+/**
+ * Figma "Order book panel" (Tab=Order book / Tab=Trades): 10px padding, 18px
+ * between the tabs, the selectors and the table. Rows are 33px with 20px side
+ * padding; the depth bar runs from the left with a 3px edge.
+ */
 export function OrderBook({
   marketKey,
   collapsed = false,
@@ -60,29 +83,23 @@ export function OrderBook({
     >
       <div
         inert={collapsed || undefined}
-        className={`absolute inset-y-0 left-0 flex h-full flex-col gap-[18px] overflow-hidden bg-black/70 p-2.5 transition-[opacity,translate] ${EASE} ${
+        className={`absolute inset-y-0 left-0 flex h-full flex-col gap-[18px] overflow-hidden bg-black/70 p-2.5 transition-[opacity,translate] lg:bg-transparent ${EASE} ${
           collapsed ? "-translate-x-6 opacity-0" : "translate-x-0 opacity-100 delay-100"
         }`}
         style={{ width: collapsible ? ORDER_BOOK_WIDTH : "100%" }}
       >
         {hideTabs ? null : (
-        <div className="flex w-full items-center gap-4 border-b border-white/[0.06]">
-          {(
-            [
-              ["book", "Order book"],
-              ["trades", "Trades"],
-            ] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              className={`trade-tab ${activeTab === k ? "is-active" : ""}`}
-              onClick={() => setTab(k)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          // The 20px caret toggle sits at the right end of this row.
+          <div className={`flex h-5 w-full shrink-0 ${collapsible ? "pr-5" : ""}`}>
+            {TABS.map(([k, label]) => (
+              <BookTabButton
+                key={k}
+                label={label}
+                active={activeTab === k}
+                onClick={() => setTab(k)}
+              />
+            ))}
+          </div>
         )}
 
         <div key={activeTab} className="trade-swap min-h-0 flex-1 overflow-hidden">
@@ -100,7 +117,7 @@ export function OrderBook({
         aria-label={collapsed ? "Show order book" : "Hide order book"}
         aria-expanded={!collapsed}
         onClick={onToggle}
-        className="absolute top-2.5 right-2.5 z-10 size-5 opacity-80 hover:opacity-100"
+        className="absolute top-2.5 right-2.5 z-10 size-5 transition-opacity duration-200 hover:opacity-80"
       >
         <img
           src="/logo/icon-caret-right.svg"
@@ -111,6 +128,71 @@ export function OrderBook({
         />
       </button>
     </section>
+  );
+}
+
+/**
+ * Figma book tab: 20px tall, 20px side padding, Orbitron SemiBold 11px.
+ * Selected: white 10% fill with a purple fade and a 2px white stroke outside
+ * the bottom edge. The stroke grows in like the positions tabs; hover shows
+ * the fill at half strength, as on the order type tabs.
+ */
+function BookTabButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className="group relative flex h-5 min-w-px flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
+    >
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
+          active ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+        }`}
+        style={{ backgroundImage: TAB_FILL }}
+      />
+      {active ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 origin-center animate-[trade-tab-in_0.3s_ease] bg-white motion-reduce:animate-none"
+        />
+      ) : null}
+      <span
+        className={`relative whitespace-nowrap font-display text-[11px] font-semibold uppercase leading-normal tracking-[0.88px] text-white ${TRIM}`}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Figma table header: 28px tall, 20px side padding, labels at 50%, with a 1px
+ * white 20% line just under it. Rows start 10.94px below the row (10px gap
+ * plus a 0.94px spacer in Figma).
+ */
+function HeaderRow({ cols }: { cols: readonly [string, string, string] }) {
+  return (
+    <div className="mb-[10.94px] flex h-7 w-full shrink-0 items-center gap-2.5 px-5 shadow-[0_1px_0_rgba(255,255,255,0.2)]">
+      <span className="flex min-w-px flex-1 items-center">
+        <span className={`whitespace-nowrap text-white opacity-50 ${T12}`}>{cols[0]}</span>
+      </span>
+      <span className="flex min-w-px flex-1 items-center">
+        <span className={`whitespace-nowrap text-white opacity-50 ${T12}`}>{cols[1]}</span>
+      </span>
+      <span className="flex min-w-px flex-1 items-center justify-end">
+        <span className={`whitespace-nowrap text-white opacity-50 ${T12}`}>{cols[2]}</span>
+      </span>
+    </div>
   );
 }
 
@@ -143,39 +225,27 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
   };
 
   const symbol = marketKey.toUpperCase();
+  const unitLabel = unit === "coin" ? symbol : "USD";
 
   return (
     <div className="flex h-full w-full flex-col items-start gap-[18px]">
-      <div className="flex w-full items-center justify-between">
+      <div className="flex h-5 w-full shrink-0 items-center justify-between">
         <Dropdown
           label={formatNumber(tick, tickDecimals(tick))}
           onClick={() => setTickIndex((i) => (i + 1) % ticks.length)}
         />
         <Dropdown
-          label={unit === "coin" ? symbol : "USD"}
+          label={unitLabel}
           onClick={() => setUnit((u) => (u === "coin" ? "usd" : "coin"))}
         />
       </div>
 
       <div className="flex min-h-0 w-full flex-1 flex-col items-center">
-        <div className="mb-1 flex w-full items-center gap-2.5 px-5 py-1">
-          {["Price", "Size"].map((h) => (
-            <span key={h} className="flex min-w-px flex-1 items-center">
-              <span className="text-[11px] whitespace-nowrap text-fog uppercase tracking-wide">
-                {h}
-              </span>
-            </span>
-          ))}
-          <span className="flex min-w-px flex-1 items-center justify-end">
-            <span className="text-[11px] whitespace-nowrap text-fog uppercase tracking-wide">
-              Total
-            </span>
-          </span>
-        </div>
+        <HeaderRow cols={["Price", `Size (${unitLabel})`, `Total (${unitLabel})`]} />
 
         {!book.connected && book.asks.length === 0 ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="animate-pulse text-sm text-fog">
+          <div className="flex w-full flex-1 items-center justify-center">
+            <span className={`animate-pulse whitespace-nowrap text-white opacity-50 ${T12}`}>
               Connecting to {market.extendedMarket}…
             </span>
           </div>
@@ -197,11 +267,15 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
                 <EmptyRow key={`ae${i}`} />
               );
             })}
-            <Spread
-              mid={mid}
-              spread={spread}
-              decimals={Math.max(priceDecimals, market.priceDecimals)}
-            />
+            {/* Figma spread row: 36px, centred, 50%. */}
+            <div className="flex h-9 w-full shrink-0 items-center justify-center px-5">
+              <span className={`whitespace-nowrap text-white opacity-50 ${T12}`}>
+                Spread:{" "}
+                {spread == null || mid == null
+                  ? "—"
+                  : `${formatNumber(spread, Math.max(priceDecimals, market.priceDecimals))} (${((spread / mid) * 100).toFixed(4)}%)`}
+              </span>
+            </div>
             {Array.from({ length: DEPTH }, (_, i) => {
               const level = book.bids[i];
               return level ? (
@@ -221,81 +295,30 @@ function BookBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) 
           </>
         )}
       </div>
-
-      <p className="w-full px-1 text-[10px] text-fog/70">
-        Display book · your size never paints it
-      </p>
     </div>
   );
 }
 
-function Spread({
-  mid,
-  spread,
-  decimals,
-}: {
-  mid: number | null;
-  spread: number | null;
-  decimals: number;
-}) {
-  const prevMid = useRef<number | null>(null);
-  const [dir, setDir] = useState<"up" | "down" | null>(null);
-
-  useEffect(() => {
-    if (mid == null) return;
-    if (prevMid.current != null && mid !== prevMid.current) {
-      setDir(mid > prevMid.current ? "up" : "down");
-    }
-    prevMid.current = mid;
-  }, [mid]);
-
-  return (
-    <div className="flex h-9 w-full items-center justify-between px-5 py-1.5">
-      <span
-        className={`flex items-center gap-1 whitespace-nowrap tabular-nums transition-colors duration-300 ${
-          dir === "up"
-            ? "text-[var(--trade-green)]"
-            : dir === "down"
-              ? "text-[var(--trade-red)]"
-              : "text-paper"
-        }`}
-        style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
-      >
-        <span
-          aria-hidden
-          className={`inline-block text-[9px] transition-transform duration-300 ${
-            dir === "down" ? "rotate-180" : ""
-          } ${dir ? "opacity-100" : "opacity-0"}`}
-        >
-          ▲
-        </span>
-        {mid == null ? "—" : formatNumber(mid, decimals)}
-      </span>
-      <span className="whitespace-nowrap text-[11px] tabular-nums text-fog">
-        Spread:{" "}
-        {spread == null || mid == null
-          ? "—"
-          : `${formatNumber(spread, decimals)} (${((spread / mid) * 100).toFixed(4)}%)`}
-      </span>
-    </div>
-  );
-}
-
+/** Figma selector: Satoshi 14px at 50% with a 20px caret, 6px apart. */
 function Dropdown({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-1.5 opacity-50 transition-opacity hover:opacity-80"
+      className="flex h-5 items-center justify-center gap-1.5 opacity-50 transition-opacity duration-200 hover:opacity-80"
     >
-      <span className="text-[12px] whitespace-nowrap text-paper">{label}</span>
-      <img src="/logo/icon-caret-down.svg" alt="" className="size-5" />
+      <span
+        className={`whitespace-nowrap text-[14px] uppercase leading-normal tracking-[-0.28px] text-white ${TRIM}`}
+      >
+        {label}
+      </span>
+      <img src="/logo/icon-caret-down.svg" alt="" width={20} height={20} className="size-5" />
     </button>
   );
 }
 
 function EmptyRow() {
-  return <div className="h-[33px] w-full" />;
+  return <div className="h-[33px] w-full shrink-0" />;
 }
 
 function BookRow({
@@ -324,11 +347,11 @@ function BookRow({
   }, [level.size]);
 
   return (
-    <div className="book-in relative flex h-[33px] w-full items-center gap-2.5 overflow-clip px-5">
+    <div className="book-in relative flex h-[33px] w-full shrink-0 items-center gap-2.5 overflow-clip px-5">
       <span
         aria-hidden
         className={`absolute top-1/2 left-0 h-[38px] -translate-y-1/2 border-l-[3px] transition-[width] duration-300 ease-out ${
-          ask ? "border-[var(--trade-red)]" : "border-[var(--trade-green)]"
+          ask ? "border-[#f63d6d]" : "border-[#10edbf]"
         }`}
         style={{
           width: `${Math.max(2, (level.total / maxTotal) * 100)}%`,
@@ -345,77 +368,41 @@ function BookRow({
         />
       )}
       <span className="relative flex min-w-px flex-1 items-center">
-        <span
-          className={`whitespace-nowrap tabular-nums ${
-            ask ? "text-[var(--trade-red)]" : "text-[var(--trade-green)]"
-          }`}
-          style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
-        >
-          {formatNumber(level.price, priceDecimals)}
+        <span className={`whitespace-nowrap ${ask ? ASK_TEXT : BID_TEXT} ${T12}`}>
+          ${formatNumber(level.price, priceDecimals)}
         </span>
       </span>
       <span className="relative flex min-w-px flex-1 items-center">
-        <span
-          className="whitespace-nowrap tabular-nums text-paper"
-          style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
-        >
-          {size}
-        </span>
+        <span className={`whitespace-nowrap text-white ${T12}`}>{size}</span>
       </span>
       <span className="relative flex min-w-px flex-1 items-center justify-end">
-        <span
-          className="whitespace-nowrap tabular-nums text-paper"
-          style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
-        >
-          {total}
-        </span>
+        <span className={`whitespace-nowrap text-white ${T12}`}>{total}</span>
       </span>
     </div>
   );
 }
 
+/** Figma Trades tab: the header, then 33px rows of price, size and time (50%). */
 function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }) {
   const market = markets[marketKey];
   const trades = usePublicTrades(market.extendedMarket, TRADE_ROWS, live);
+  const symbol = marketKey.toUpperCase();
 
   return (
-    <div className="flex h-full w-full flex-col items-start gap-2.5">
-      <div className="flex w-full items-center justify-between px-1">
-        <span className="text-[11px] whitespace-nowrap text-fog">{market.extendedMarket}</span>
-        <span className="flex items-center gap-1.5">
-          <span className="relative flex size-1.5">
-            <span
-              className={`absolute inset-0 rounded-full bg-[var(--trade-green)] ${
-                trades.length ? "animate-ping" : ""
-              }`}
-            />
-            <span className="relative size-1.5 rounded-full bg-[var(--trade-green)]" />
-          </span>
-          <span className="text-[11px] whitespace-nowrap text-[var(--trade-green)]">Live</span>
-        </span>
-      </div>
-      <div className="flex w-full items-center gap-2.5 px-5 py-1">
-        {["Price", "Size", "Time (UTC)"].map((h, i) => (
-          <span
-            key={h}
-            className={`flex min-w-px flex-1 items-center ${i === 2 ? "justify-end" : ""}`}
-          >
-            <span className="text-[11px] whitespace-nowrap text-fog uppercase tracking-wide">
-              {h}
-            </span>
-          </span>
-        ))}
-      </div>
+    <div className="flex h-full w-full flex-col items-start">
+      <HeaderRow cols={["Price", `Size (${symbol})`, "Time"]} />
       {trades.length === 0 ? (
-        <div className="flex flex-1 w-full items-center justify-center">
-          <span className="animate-pulse text-sm text-fog">Waiting for trades…</span>
+        <div className="flex w-full flex-1 items-center justify-center">
+          <span className={`animate-pulse whitespace-nowrap text-white opacity-50 ${T12}`}>
+            Waiting for trades…
+          </span>
         </div>
       ) : (
         <div className="flex w-full flex-col overflow-hidden">
           {trades.map((t) => (
             <div
               key={t.id}
-              className="book-in relative flex h-[33px] w-full items-center gap-2.5 overflow-clip px-5"
+              className="book-in relative flex h-[33px] w-full shrink-0 items-center gap-2.5 overflow-clip px-5"
             >
               {t.fresh && (
                 <span
@@ -427,26 +414,20 @@ function TradesBody({ marketKey, live }: { marketKey: MarketKey; live: boolean }
               )}
               <span className="relative flex min-w-px flex-1 items-center">
                 <span
-                  className={`whitespace-nowrap tabular-nums ${
-                    t.side === "buy"
-                      ? "text-[var(--trade-green)]"
-                      : "text-[var(--trade-red)]"
-                  }`}
-                  style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
+                  className={`whitespace-nowrap ${
+                    t.side === "buy" ? "text-[#0fedbf]" : "text-[#f73b6b]"
+                  } ${T12}`}
                 >
-                  {formatNumber(t.price, market.priceDecimals)}
+                  ${formatNumber(t.price, market.priceDecimals)}
                 </span>
               </span>
               <span className="relative flex min-w-px flex-1 items-center">
-                <span
-                  className="whitespace-nowrap tabular-nums text-paper"
-                  style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500 }}
-                >
+                <span className={`whitespace-nowrap text-white ${T12}`}>
                   {formatNumber(t.size, 4)}
                 </span>
               </span>
               <span className="relative flex min-w-px flex-1 items-center justify-end">
-                <span className="whitespace-nowrap text-[11px] tabular-nums text-fog">
+                <span className={`whitespace-nowrap text-white opacity-50 ${T12}`}>
                   {new Date(t.ts).toISOString().slice(11, 19)}
                 </span>
               </span>

@@ -38,15 +38,17 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
       : null;
 
   return (
-    <div className="trade-ticker flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:gap-6 2xl:gap-8">
-      <div className="trade-ticker-pair flex min-w-0 items-center justify-between gap-3">
+    // Figma ticker row: the pair and price on the left, the 813px stats bar on
+    // the right (it shrinks, then scrolls, on narrower screens).
+    <div className="trade-ticker flex flex-col items-stretch gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-[18px]">
+      <div className="trade-ticker-pair flex min-w-0 items-center justify-between gap-3 lg:justify-start lg:gap-[23px]">
         <div className="trade-ticker-id flex min-w-0 flex-col items-start gap-[5px]">
           <MarketPicker marketKey={marketKey} onSelect={onSelect} />
           {leverage != null ? (
             <span className="trade-pair-lev lg:hidden">{leverage}x</span>
           ) : null}
         </div>
-        <div className="trade-ticker-quote lg:hidden">
+        <div className="trade-ticker-quote">
           <span className="trade-ticker-quote-px">
             {formatUsd(mark, decimals === 0 ? 1 : decimals)}
           </span>
@@ -60,8 +62,8 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
         </div>
       </div>
 
-      <div className="trade-ticker-scroll no-scrollbar -mx-4 hidden min-w-0 flex-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:block lg:px-0">
-        <div className="trade-ticker-stats flex w-max min-w-full items-center gap-5 uppercase 2xl:gap-6">
+      <div className="trade-ticker-scroll no-scrollbar -mx-4 hidden min-w-0 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:block lg:px-0 xl:w-[813px]">
+        <div className="trade-ticker-stats flex w-max min-w-full items-center justify-between gap-[14px] uppercase">
           <TickerStat
             label="Mark"
             value={formatUsd(mark, decimals === 0 ? 2 : decimals)}
@@ -81,11 +83,11 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
             value={formatCompactUsd(stats?.openInterest)}
           />
           <TickerStat
-            label="Funding / countdown"
+            label="Funding/countdown"
             value={
               funding == null
                 ? "—"
-                : `${funding.toFixed(4)}%${fundingCountdown ? ` - ${fundingCountdown}` : ""}`
+                : `${funding.toFixed(4)}%${fundingCountdown ? ` ${fundingCountdown}` : ""}`
             }
             tone={fundingUp === true ? "up" : fundingUp === false ? "down" : undefined}
           />

@@ -65,20 +65,23 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
           theme: "dark",
           style: "1",
           locale: "en",
-          toolbar_bg: "#000000",
+          // Transparent so the market card's background and glow show through,
+          // as in Figma.
+          toolbar_bg: "rgba(0, 0, 0, 0)",
           enable_publishing: false,
-          // Top interval / indicators bar off; drawing tools on the left
+          // Figma chart: no top toolbar and no drawing tools; the date-range
+          // bar (1D 5D 1M …) runs along the bottom.
           hide_top_toolbar: true,
-          hide_side_toolbar: false,
+          hide_side_toolbar: true,
           hide_legend: true,
-          withdateranges: false,
+          withdateranges: true,
           allow_symbol_change: false,
           details: false,
           hotlist: false,
           calendar: false,
           save_image: false,
           container_id: idRef.current,
-          backgroundColor: "#000000",
+          backgroundColor: "rgba(0, 0, 0, 0)",
           gridColor: "rgba(255, 255, 255, 0.1)",
           studies_overrides: {},
           disabled_features: [
@@ -93,25 +96,22 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
             "display_market_status",
             "legend_widget",
           ],
-          enabled_features: [
-            "left_toolbar",
-            "side_toolbar_in_fullscreen_mode",
-            "seconds_resolution",
-          ],
+          enabled_features: ["seconds_resolution"],
           overrides: {
-            "paneProperties.background": "#000000",
+            "paneProperties.background": "rgba(0, 0, 0, 0)",
             "paneProperties.backgroundType": "solid",
             "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.1)",
             "paneProperties.vertGridProperties.style": 0,
             "paneProperties.horzGridProperties.color": "rgba(255,255,255,0.1)",
             "paneProperties.horzGridProperties.style": 0,
             "paneProperties.separatorColor": "rgba(255,255,255,0.12)",
-            "mainSeriesProperties.candleStyle.upColor": "#22c55e",
-            "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-            "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
-            "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
-            "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-            "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+            // Figma candles: #10edbf up, #f63d6d down.
+            "mainSeriesProperties.candleStyle.upColor": "#10edbf",
+            "mainSeriesProperties.candleStyle.downColor": "#f63d6d",
+            "mainSeriesProperties.candleStyle.borderUpColor": "#10edbf",
+            "mainSeriesProperties.candleStyle.borderDownColor": "#f63d6d",
+            "mainSeriesProperties.candleStyle.wickUpColor": "#10edbf",
+            "mainSeriesProperties.candleStyle.wickDownColor": "#f63d6d",
             // Last-price line (both naming variants — free widget is picky)
             "mainSeriesProperties.showPriceLine": true,
             "mainSeriesProperties.priceLineVisible": true,
@@ -140,8 +140,14 @@ export function TradingChart({ marketKey }: { marketKey: MarketKey }) {
   }, [marketKey]);
 
   return (
-    <div className="trade-chart relative h-[420px] w-full overflow-hidden bg-black sm:h-[561px] xl:h-full xl:min-h-[561px]">
+    // Figma chart frame: rgba(1,2,4,0.2) fill and, beside the book, a 1px
+    // inside stroke on its right edge (white 40% -> 100% top to bottom, at 20%).
+    <div className="trade-chart relative h-[420px] w-full overflow-hidden bg-black sm:h-[561px] lg:bg-[rgba(1,2,4,0.2)] xl:h-full">
       <div ref={containerRef} className="absolute inset-0" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 hidden w-px bg-[linear-gradient(rgba(255,255,255,0.08),rgba(255,255,255,0.2))] xl:block"
+      />
     </div>
   );
 }

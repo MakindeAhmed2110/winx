@@ -1162,10 +1162,6 @@ h3 {
 }
 
 @media (max-width: 1023px) {
-  .trade-pair-lockup .trade-pair-badge {
-    display: none;
-  }
-
   .trade-pair-icon {
     width: 24px;
     height: 24px;
@@ -1697,11 +1693,13 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   height: 16px;
 }
 
+/* Figma "Token dropdown": 24px logo, the pair in Orbitron SemiBold 16px with
+   8% tracking (box trimmed to cap height), and a 20px caret, 10px apart. */
 .trade-pair-lockup {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 10px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -1710,9 +1708,9 @@ html:not(.winx-privy-open) [data-privy-dialog] {
 
 .trade-pair-icon {
   display: block;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
   flex-shrink: 0;
   object-fit: cover;
 }
@@ -1721,38 +1719,18 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 1.28px;
   color: #fff;
-  line-height: 1;
+  line-height: normal;
   white-space: nowrap;
-}
-
-.trade-pair-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.2rem 0.45rem;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1;
+  text-box: trim-both cap alphabetic;
 }
 
 .trade-pair-caret {
   display: block;
-  width: 10px;
-  height: 6px;
-  margin-left: 0.15rem;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.7;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1760,10 +1738,12 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   transform: rotate(180deg);
 }
 
-/* Market picker dropdown */
+/* Market picker dropdown. Flex so the 24px trigger isn't padded out by the
+   text line it would otherwise sit on. */
 .market-picker {
   position: relative;
   z-index: 40;
+  display: flex;
   font-family: var(--font-sans);
 }
 
@@ -2105,65 +2085,44 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   overflow: visible;
 }
 
+/* Figma "Market Stats Bar" item: label 12px at 50% over the value 14px,
+   12px apart (both boxes trimmed to cap height). */
 .trade-ticker-stat {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 12px;
   flex-shrink: 0;
-  line-height: 1.05;
 }
 
 .trade-ticker-label {
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.24px;
+  line-height: normal;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+  opacity: 0.5;
+  text-box: trim-both cap alphabetic;
 }
 
 .trade-ticker-value {
   font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  letter-spacing: -0.28px;
+  line-height: normal;
   color: #fff;
   font-variant-numeric: tabular-nums;
+  text-box: trim-both cap alphabetic;
 }
 
 .trade-ticker-value.is-up {
-  color: var(--trade-green);
+  color: #10edbf;
 }
 
 .trade-ticker-value.is-down {
-  color: var(--trade-red);
-}
-
-.trade-ticker-status {
-  display: none;
-  align-items: center;
-  gap: 0.45rem;
-  flex-shrink: 0;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-  white-space: nowrap;
-  text-transform: none;
-}
-
-.trade-ticker-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--trade-green);
-  box-shadow: 0 0 8px rgba(16, 237, 191, 0.55);
-  animation: soft-glow 2.4s ease-in-out infinite;
-}
-
-@media (min-width: 1024px) {
-  .trade-ticker-status {
-    display: inline-flex;
-  }
+  color: #f63c6b;
 }
 
 .trade-book-mobile-toggle {
@@ -2172,9 +2131,13 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   color: var(--color-paper);
 }
 
-.trade-book {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.45);
+/* On desktop the book sits inside the market card with no frame of its own
+   (Figma "Order book panel": background blur only). */
+@media (max-width: 1023px) {
+  .trade-book {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.45);
+  }
 }
 
 .trade-chart-wrap {
@@ -2182,17 +2145,17 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   height: 100%;
 }
 
+/* Figma: chart and book share a 566.94px row (height set on the row). */
 @media (min-width: 1280px) {
   .trade-chart-book {
     align-items: stretch;
-    min-height: 561px;
   }
 
   .trade-chart-book .trade-chart-wrap,
   .trade-chart-book .trade-chart,
   .trade-chart-book .trade-book {
     height: 100%;
-    min-height: 561px;
+    min-height: 0;
   }
 
   #markets {
@@ -2203,7 +2166,7 @@ html:not(.winx-privy-open) [data-privy-dialog] {
 
   .trade-book-desktop {
     flex: 1 1 auto;
-    min-height: 561px;
+    min-height: 0;
   }
 }
 
@@ -2215,40 +2178,70 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   background: rgba(0, 0, 0, 0.55);
 }
 
+/* Figma "Account panel": black 82%, 1px white 7% inside stroke, 40.95px
+   backdrop blur, 10px padding and 10px between the tabs and the table. It
+   fills the rest of the left column. */
 @media (min-width: 1024px) {
   .trade-panel {
+    flex: 1 1 auto;
     width: 100%;
+    height: auto;
     min-height: 0;
+    gap: 10px;
+    padding: 10px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.82);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(40.95px);
   }
 }
 
+/* Figma "Account panel" tab: 19px tall, 20px side padding, Orbitron SemiBold
+   10px with 8% tracking. Selected: rgba(217,217,217,0.1) fill and a 3px white
+   stroke outside the bottom edge, which grows in from the centre. Hover shows
+   the fill at half strength, as on the order type tabs. */
 .trade-tab {
   position: relative;
-  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 19px;
+  padding: 0 20px;
   border: 0;
   background: transparent;
-  color: rgba(244, 244, 248, 0.55);
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 0.3s ease, background 0.3s ease;
-}
-
-.trade-tab-pill {
-  flex: 1;
-  text-align: center;
-}
-
-.trade-tab:hover {
-  color: rgba(244, 244, 248, 0.85);
-}
-
-.trade-tab.is-active {
   color: #fff;
-  background: rgba(255, 255, 255, 0.04);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  line-height: normal;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.trade-tab > span {
+  position: relative;
+  text-box: trim-both cap alphabetic;
+}
+
+.trade-tab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(217, 217, 217, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms cubic-bezier(0, 0, 0.58, 1);
+}
+
+.trade-tab:hover::before {
+  opacity: 0.5;
+}
+
+.trade-tab.is-active::before {
+  opacity: 1;
 }
 
 .trade-tab.is-active::after {
@@ -2256,8 +2249,8 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: 1.5px;
+  bottom: -3px;
+  height: 3px;
   background: #fff;
   border-radius: 0;
   transform-origin: center;
@@ -2296,7 +2289,7 @@ html:not(.winx-privy-open) [data-privy-dialog] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .trade-tab,
+  .trade-tab::before,
   .trade-swap,
   .trade-tab.is-active::after {
     transition: none;
@@ -2362,32 +2355,6 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   .book-in {
     animation: none;
   }
-}
-
-.trade-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.trade-table th {
-  padding: 0.65rem 0.85rem;
-  text-align: left;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-fog);
-  border-bottom: 1px solid var(--trade-line);
-  white-space: nowrap;
-}
-
-.trade-table td {
-  padding: 0.7rem 0.85rem;
-  font-family: var(--font-sans);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  white-space: nowrap;
 }
 
 .trade-chart {
@@ -2956,6 +2923,7 @@ html:not(.winx-privy-open) [data-privy-dialog] {
   min-width: 0;
 }
 
+
 .trade-ticker-quote-px {
   font-family: var(--font-display);
   font-size: 16px;
@@ -2977,6 +2945,38 @@ html:not(.winx-privy-open) [data-privy-dialog] {
 
 .trade-ticker-quote-chg.is-down {
   color: var(--trade-red, #ff4d6d);
+}
+
+/* Figma desktop: price (Orbitron 16px) over the 24h change (Satoshi 14px),
+   8px apart, left-aligned, 23px right of the pair. */
+@media (min-width: 1024px) {
+  .trade-ticker-quote {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .trade-ticker-quote-px {
+    letter-spacing: 1.28px;
+    line-height: normal;
+    text-box: trim-both cap alphabetic;
+  }
+
+  .trade-ticker-quote-chg {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: -0.28px;
+    line-height: normal;
+    text-transform: uppercase;
+    text-box: trim-both cap alphabetic;
+  }
+
+  .trade-ticker-quote-chg.is-up {
+    color: #10edbf;
+  }
+
+  .trade-ticker-quote-chg.is-down {
+    color: #f63c6b;
+  }
 }
 
 .trade-mobile-panes {

@@ -138,10 +138,18 @@ export function MarketPicker({ marketKey, onSelect }: Props) {
         aria-controls={listId}
         onClick={() => setOpen((v) => !v)}
       >
-        <img src={market.icon} alt="" className="trade-pair-icon" width={28} height={28} />
-        <span className="trade-pair-title">{market.pair}</span>
-        <span className="trade-pair-badge">Perp</span>
-        <span className="trade-pair-caret" aria-hidden />
+        {/* Figma "Token dropdown": 24px logo, pair in Orbitron 16px, 20px
+            caret, 10px apart. */}
+        <img src={market.icon} alt="" className="trade-pair-icon" width={24} height={24} />
+        <span className="trade-pair-title">{market.pair.replace("-", "/")}</span>
+        <img
+          src="/icons/caret-down-20.svg"
+          alt=""
+          aria-hidden
+          width={20}
+          height={20}
+          className="trade-pair-caret"
+        />
       </button>
 
       <div

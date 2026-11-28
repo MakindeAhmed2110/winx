@@ -14,6 +14,53 @@ import { TradeHeader } from "./TradeHeader";
 import { TradeSuccessModal } from "./TradeSuccessModal";
 import { TradingChart } from "./TradingChart";
 
+/**
+ * The market card's two Figma fills: radial glows (lavender to purple 30% to
+ * clear) at 10% opacity. Figma draws them as rotated ellipses, which a CSS
+ * radial gradient can't do, so each is a rotated layer clipped to the card.
+ * Sizes and centres are fractions of the card (1261 x 649.94 in Figma) so the
+ * glows scale with it the way Figma's gradient transforms do.
+ *
+ * The TradingView chart paints an opaque background, which would hide a glow
+ * placed behind it, so the glow sits on top at 10%. Over the card's near-black
+ * background that looks the same as a glow behind it. (A screen blend doesn't
+ * reach into the chart's iframe in Chrome, so this uses normal blending.)
+ */
+const GLOW =
+  "radial-gradient(closest-side, rgba(184,188,249,1) 0%, rgba(177,95,248,0.3) 46.2%, rgba(0,0,0,0) 100%)";
+
+function MarketGlow() {
+  return (
+    <div
+      aria-hidden
+      className="trade-market-glow pointer-events-none absolute inset-px z-[5] hidden overflow-hidden opacity-10 lg:block"
+    >
+      <span
+        className="absolute"
+        style={{
+          left: "-63.8%",
+          top: "3%",
+          width: "220.8%",
+          height: "52.59%",
+          transform: "rotate(37.2deg)",
+          backgroundImage: GLOW,
+        }}
+      />
+      <span
+        className="absolute"
+        style={{
+          left: "7.0%",
+          top: "-40.77%",
+          width: "134.57%",
+          height: "89.26%",
+          transform: "rotate(30.1deg)",
+          backgroundImage: GLOW,
+        }}
+      />
+    </div>
+  );
+}
+
 /** Figma footer badge: 6px dot and 11px label, 5px apart, on a 15% tint. */
 function FooterBadge({
   dot,
@@ -89,15 +136,24 @@ export function TradePage() {
       <div className="trade-shell relative z-10 mx-0 mb-0 min-h-0 flex-1 md:mx-2.5 md:mb-2.5 lg:mx-[25px] lg:-mt-px lg:mb-[23px]">
         <div className="trade-shell-inner relative z-[1] h-full min-h-0">
           <div className="no-scrollbar flex h-full flex-col gap-4 overflow-x-hidden overflow-y-auto overscroll-x-none px-3 pt-3 pb-[148px] sm:px-6 lg:flex-row lg:gap-[10px] lg:overflow-hidden lg:p-0 lg:pb-0">
-            <div className="no-scrollbar max-lg:contents lg:min-w-0 lg:flex-1 lg:overflow-auto lg:pt-[22px] lg:pr-[11px] lg:pb-6 lg:pl-2">
-              <div className="max-lg:order-1">
-                <MarketTicker
-                  marketKey={desk.marketKey}
-                  onSelect={desk.selectMarket}
-                  markUsd={desk.markUsd}
-                  leverage={desk.leverage}
-                />
-              </div>
+            {/* Figma left column: the market card (ticker, chart, book) and the
+                account panel under it, 10px apart. The account panel takes the
+                rest of the height; below ~1117px tall the column scrolls. */}
+            <div className="no-scrollbar max-lg:contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 lg:overflow-y-auto">
+              {/* Figma market card: black 82% with two faint purple glows, a 1px
+                  white 7% inside stroke, 40.95px backdrop blur and 10px padding
+                  inside the stroke. z-[1] keeps the market dropdown above the
+                  account panel where it hangs past the card. */}
+              <div className="max-lg:contents lg:relative lg:z-[1] lg:isolate lg:flex lg:shrink-0 lg:flex-col lg:gap-2.5 lg:bg-black/[0.82] lg:p-[11px] lg:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] lg:backdrop-blur-[40.95px]">
+                <MarketGlow />
+                <div className="max-lg:order-1 lg:p-2.5">
+                  <MarketTicker
+                    marketKey={desk.marketKey}
+                    onSelect={desk.selectMarket}
+                    markUsd={desk.markUsd}
+                    leverage={desk.leverage}
+                  />
+                </div>
 
               <div className="trade-mobile-panes max-lg:order-2 lg:hidden">
                 {(
@@ -118,7 +174,9 @@ export function TradePage() {
                 ))}
               </div>
 
-              <div className="trade-chart-book max-lg:contents lg:mt-[26px] lg:flex lg:flex-col lg:items-stretch lg:gap-4 xl:flex-row xl:items-stretch xl:gap-2">
+              {/* Figma: chart (fills) beside the 342px book, 566.94px tall. Below
+                  1280px the book drops under the chart. */}
+              <div className="trade-chart-book max-lg:contents lg:flex lg:flex-col lg:items-stretch lg:gap-2.5 xl:h-[566.94px] xl:flex-row xl:gap-0">
                 <div
                   className={`flex min-w-0 max-lg:order-2 lg:min-w-0 lg:flex-1 ${
                     mobilePane === "chart" ? "" : "max-lg:hidden"
@@ -154,8 +212,9 @@ export function TradePage() {
                   </div>
                 </div>
               </div>
+              </div>
 
-              <div className="max-lg:order-5 lg:mt-5" id="portfolio">
+              <div className="max-lg:order-5 lg:flex lg:min-h-[344px] lg:flex-1 lg:flex-col" id="portfolio">
                 <PositionsPanel desk={desk} />
               </div>
             </div>

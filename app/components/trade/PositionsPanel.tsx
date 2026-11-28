@@ -1,10 +1,86 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { formatUnits } from "viem";
 import { formatUsdw } from "../../lib/format";
 import { useSettlementMarks } from "../../hooks/useSettlementMarks";
 import type { LocalNote } from "../../lib/privacy/notes";
 import type { TradeDeskState } from "../../hooks/useTradeDesk";
+
+/** Figma table text: Satoshi 12px, -2% tracking, uppercase. */
+const TEXT = "text-[12px] uppercase leading-normal tracking-[-0.24px] tabular-nums";
+/** Single labels are trimmed to cap height like Figma's text boxes. Table cells
+ * aren't, so truncation doesn't clip descenders; Satoshi's cap centre sits
+ * within ~0.1px of its line-box centre, so they still line up with Figma. */
+const CELL = `${TEXT} [text-box:trim-both_cap_alphabetic]`;
+/** Figma gain / loss colours. */
+const UP = "text-[#0fedbe]";
+const DOWN = "text-[#f63c6b]";
+
+/**
+ * Figma account table header: 35px row, 20px side padding, 10px between the
+ * equal-width columns and a 120px action column; labels at 50% with a 1px
+ * white 20% line under the row. The first row starts 10.94px below it.
+ * Below 1536px wide the action column narrows to 80px (Close + More need 71)
+ * so the column labels still fit.
+ */
+function TableHead({ cols }: { cols: readonly string[] }) {
+  return (
+    <div className="mb-[10.94px] flex h-[35px] items-center gap-2.5 px-5 shadow-[0_1px_0_rgba(255,255,255,0.2)]">
+      {cols.map((c) => (
+        <span key={c} className="flex min-w-px flex-1 items-center">
+          <span className={`truncate text-white opacity-50 ${TEXT}`}>{c}</span>
+        </span>
+      ))}
+      <span className="w-[120px] shrink-0 max-2xl:w-20" />
+    </div>
+  );
+}
+
+/** Figma account table row: 38.41px tall, rows 2px apart. */
+function TableRow({ cells, action }: { cells: ReactNode[]; action: ReactNode }) {
+  return (
+    <div className="flex h-[38.41px] items-center gap-2.5 px-5">
+      {cells.map((c, i) => (
+        <span key={i} className="flex min-w-px flex-1 items-center">
+          <span className={`truncate text-white ${TEXT}`}>{c}</span>
+        </span>
+      ))}
+      <span className="flex w-[120px] shrink-0 items-center justify-end gap-0.5 max-2xl:w-20">
+        {action}
+      </span>
+    </div>
+  );
+}
+
+function EmptyRow({ children }: { children: string }) {
+  return (
+    <div className="flex h-[38.41px] items-center justify-center px-5">
+      <span className="text-[12px] leading-normal tracking-[-0.24px] text-white/50">{children}</span>
+    </div>
+  );
+}
+
+/** Figma "Glass button" (Text): white 10%, 12px side padding, 19px tall. */
+function GlassButton({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[19px] items-center justify-center bg-white/10 px-3 transition-colors duration-200 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/10"
+    >
+      <span className={`text-white ${CELL}`}>{children}</span>
+    </button>
+  );
+}
 
 export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
   const {
@@ -129,17 +205,32 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
           Info
         </button>
       </div>
-      <div className="hidden items-center gap-4 overflow-x-auto border-b border-white/[0.06] px-3 pt-2 lg:flex">
-        {tabs.map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            className={`trade-tab whitespace-nowrap ${bottomTab === k ? "is-active" : ""}`}
-            onClick={() => setBottomTab(k)}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Figma "Account panel" tabs row: 20px tall, tabs on the left (bottom
+          aligned), Filter on the right 20px in from the edge. */}
+      <div className="hidden h-5 shrink-0 items-end justify-between pr-5 lg:flex">
+        <div className="no-scrollbar flex min-w-0 items-center overflow-x-auto">
+          {tabs.map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={bottomTab === k}
+              className={`trade-tab ${bottomTab === k ? "is-active" : ""}`}
+              onClick={() => setBottomTab(k)}
+            >
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+        {/* Figma Filter trigger (50%). Filtering isn't built yet. */}
+        <button
+          type="button"
+          disabled
+          title="Filters are coming soon"
+          className="flex h-5 shrink-0 items-center gap-1.5 opacity-50"
+        >
+          <span className={`text-white ${CELL}`}>Filter</span>
+          <img src="/icons/funnel-20.svg" alt="" width={20} height={20} className="size-5" />
+        </button>
       </div>
 
       <div key={bottomTab} className="trade-swap min-h-0 flex-1 overflow-auto">
@@ -209,27 +300,13 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
               );
             })}
           </div>
-          <table className="trade-table hidden lg:table">
-            <thead>
-              <tr>
-                <th>Asset</th>
-                <th>Side</th>
-                <th>Leverage</th>
-                <th>Margin</th>
-                <th>Notional</th>
-                <th>Entry</th>
-                <th>Mark</th>
-                <th>Unrealized PnL</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
+          <div className="hidden lg:block">
+            <TableHead
+              cols={["Asset", "Side", "Leverage", "Margin", "Notional", "Entry", "Mark", "Unrealized PnL"]}
+            />
+            <div className="flex flex-col gap-0.5">
               {positions.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-fog">
-                    No private positions yet. Place an order to open one.
-                  </td>
-                </tr>
+                <EmptyRow>No private positions yet. Place an order to open one.</EmptyRow>
               )}
               {positions.map((p) => {
                 const entry = Number(p.entryPrice) / 1e8;
@@ -241,45 +318,53 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
                 const pnl = entry > 0 ? dir * ((mark - entry) / entry) * notional : 0;
                 const pct = margin > 0 ? (pnl / margin) * 100 : 0;
                 const up = pnl >= 0;
+                const pair = p.marketId === 1 ? "BTC-PERP" : "ETH-PERP";
                 return (
-                  <tr key={p.commitment}>
-                    <td className="text-paper">
-                      {p.marketId === 1 ? "BTC-PERP" : "ETH-PERP"}
-                    </td>
-                    <td className={p.isLong ? "text-[var(--trade-green)]" : "text-[var(--trade-red)]"}>
-                      {p.isLong ? "Long" : "Short"}
-                    </td>
-                    <td className="tabular-nums">{p.leverage}x</td>
-                    <td className="tabular-nums">${margin.toFixed(2)}</td>
-                    <td className="tabular-nums">${formatUsdw(notional, 0)}</td>
-                    <td className="tabular-nums">
-                      ${entry.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="tabular-nums">
-                      ${mark.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td
-                      className={`tabular-nums ${up ? "text-[var(--trade-green)]" : "text-[var(--trade-red)]"}`}
-                    >
-                      {up ? "+" : ""}
-                      ${pnl.toFixed(2)} ({up ? "+" : ""}
-                      {pct.toFixed(1)}%)
-                    </td>
-                    <td className="text-right">
-                      <button
-                        type="button"
-                        className="rounded border border-white/[0.12] px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] text-paper hover:border-white/30 disabled:opacity-40"
-                        disabled={busy || !address}
-                        onClick={() => void onClosePosition(p)}
-                      >
-                        Close
-                      </button>
-                    </td>
-                  </tr>
+                  <TableRow
+                    key={p.commitment}
+                    cells={[
+                      pair,
+                      <span key="side" className={p.isLong ? UP : DOWN}>
+                        {p.isLong ? "Long" : "Short"}
+                      </span>,
+                      `${p.leverage}x`,
+                      `$${margin.toFixed(2)}`,
+                      `$${formatUsdw(notional, 0)}`,
+                      `$${entry.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                      `$${mark.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                      <span key="pnl" className={up ? UP : DOWN}>
+                        {up ? "+" : ""}${pnl.toFixed(2)} ({up ? "+" : ""}
+                        {pct.toFixed(1)}%)
+                      </span>,
+                    ]}
+                    action={
+                      <>
+                        <GlassButton
+                          disabled={busy || !address}
+                          onClick={() => void onClosePosition(p)}
+                        >
+                          Close
+                        </GlassButton>
+                        <button
+                          type="button"
+                          aria-label={`${pair} settings`}
+                          onClick={() => setSettingsPair(p.marketId === 1 ? "BTC/USD" : "ETH/USD")}
+                          className="flex size-[19px] items-center justify-center bg-white/10 transition-colors duration-200 hover:bg-white/15"
+                        >
+                          <img
+                            src="/icons/dots-three-vertical-16.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                          />
+                        </button>
+                      </>
+                    }
+                  />
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
           </>
         )}
 
@@ -311,43 +396,34 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
         )}
 
         {bottomTab === "balances" && (
-          <table className="trade-table hidden lg:table">
-            <thead>
-              <tr>
-                <th>Asset</th>
-                <th>Wallet</th>
-                <th>Shielded (Live notes)</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-paper">USDW</td>
-                <td className="tabular-nums">{usdwDisplay}</td>
-                <td className="tabular-nums" title="Sum of unspent Live notes only. Trade/Withdraw tags are spent.">
-                  {shieldedDisplay}
-                </td>
-                <td className="text-right">
-                  {shieldedBal > 0n && (
-                    <button
-                      type="button"
-                      className="trade-tab-pill rounded border border-white/[0.12] px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] text-paper hover:border-white/30 disabled:opacity-40"
-                      disabled={busy || !address}
-                      onClick={() => void onWithdraw()}
-                    >
+          <div className="hidden lg:block">
+            <TableHead cols={["Asset", "Wallet", "Shielded (Live notes)"]} />
+            <div className="flex flex-col gap-0.5">
+              <TableRow
+                cells={[
+                  "USDW",
+                  usdwDisplay,
+                  <span
+                    key="shielded"
+                    title="Sum of unspent Live notes only. Trade/Withdraw tags are spent."
+                  >
+                    {shieldedDisplay}
+                  </span>,
+                ]}
+                action={
+                  shieldedBal > 0n ? (
+                    <GlassButton disabled={busy || !address} onClick={() => void onWithdraw()}>
                       Unshield
-                    </button>
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-paper">ETH</td>
-                <td className="tabular-nums">{ethDisplay}</td>
-                <td className="tabular-nums text-fog">—</td>
-                <td />
-              </tr>
-            </tbody>
-          </table>
+                    </GlassButton>
+                  ) : null
+                }
+              />
+              <TableRow
+                cells={["ETH", ethDisplay, <span key="eth" className="opacity-50">—</span>]}
+                action={null}
+              />
+            </div>
+          </div>
         )}
 
         {(bottomTab === "notes" || bottomTab === "balances") && (
@@ -436,7 +512,7 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
         )}
 
         {(bottomTab === "orders" || bottomTab === "history") && (
-          <div className="flex h-full items-center justify-center p-6 text-sm text-fog">
+          <div className="flex h-full items-center justify-center p-6 text-sm text-fog lg:text-[12px] lg:tracking-[-0.24px] lg:text-white/50">
             {bottomTab === "orders"
               ? "No resting private orders. Market opens settle as commitments."
               : "Fill history stays local until you export notes."}
