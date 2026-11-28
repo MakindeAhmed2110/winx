@@ -208,7 +208,10 @@ export function PositionsPanel({ desk }: { desk: TradeDeskState }) {
       {/* Figma "Account panel" tabs row: 20px tall, tabs on the left (bottom
           aligned), Filter on the right 20px in from the edge. */}
       <div className="hidden h-5 shrink-0 items-end justify-between pr-5 lg:flex">
-        <div className="no-scrollbar flex min-w-0 items-center overflow-x-auto">
+        {/* Scrolls sideways on narrow screens, which also clips vertically, so
+            3px of bottom padding (offset by the margin) leaves room for the
+            selected tab's 3px stroke below it. */}
+        <div className="no-scrollbar -mb-[3px] flex min-w-0 items-center overflow-x-auto pb-[3px]">
           {tabs.map(([k, label]) => (
             <button
               key={k}
