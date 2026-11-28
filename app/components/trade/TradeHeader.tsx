@@ -53,6 +53,8 @@ export function TradeHeader({ onFaucetClaimed }: { onFaucetClaimed?: () => void 
       </div>
 
       <div className="trade-header-actions flex shrink-0 items-center gap-2 md:gap-2.5">
+        {/* Not in the Figma header. Kept on purpose: it's the only way to get
+            test USDW on testnet. */}
         <button
           type="button"
           className="trade-faucet-btn"
