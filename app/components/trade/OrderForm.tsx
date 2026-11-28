@@ -138,12 +138,15 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
                 orderType === k ? "opacity-100" : "opacity-0 group-hover:opacity-50"
               }`}
             />
-            <span
-              aria-hidden
-              className={`pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-white transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
-                orderType === k ? "opacity-100" : "opacity-0"
-              }`}
-            />
+            {/* Stroke animates like the positions panel tabs (.trade-tab in
+                app.css): grows from the centre and fades in over 0.3s using
+                the shared `trade-tab-in` keyframes; gone at once on deselect. */}
+            {orderType === k ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 origin-center animate-[trade-tab-in_0.3s_ease] bg-white motion-reduce:animate-none"
+              />
+            ) : null}
             <span
               className={`relative font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white ${TRIM}`}
             >
