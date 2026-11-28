@@ -116,55 +116,48 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
 
   return (
     <div
-      className={`relative flex h-full min-h-0 flex-col bg-black/[0.82] pb-2.5 backdrop-blur-[40.95px] ${STROKE_7}`}
+      className={`relative flex h-full min-h-0 flex-col bg-black/[0.82] py-2.5 backdrop-blur-[40.95px] ${STROKE_7}`}
     >
-      {/* Frosted header holding the order type tabs. It is pinned over the top
-          of the panel (absolute) and the form scrolls underneath it, so it has
-          a see-through black background (bg-black/40 = 40% black) and blurs
-          whatever passes behind it by 10px (backdrop-blur-[10px]).
-          inset-x-px / top-px keep it inside the panel's 1px edge line. */}
-      <div className="absolute inset-x-px top-px z-[2] bg-black/40 px-[9px] pt-[9px] pb-[10px] backdrop-blur-[10px]">
-        <div className="relative flex h-[38px]">
-          {TABS.map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={orderType === k}
-              onClick={() => switchType(k)}
-              className="group relative flex flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
+      {/* Order type tabs stay fixed above the scrolling form. z-[1] keeps
+          the selected tab's outside stroke above content scrolling under it. */}
+      <div className="relative z-[1] mx-[10px] mb-[10px] flex h-[38px] shrink-0">
+        {TABS.map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={orderType === k}
+            onClick={() => switchType(k)}
+            className="group relative flex flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
+          >
+            {/* Selected tab: 10% fill and a 2px stroke outside the bottom edge.
+                Hovering an unselected tab shows the fill at half opacity,
+                with no stroke. */}
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute inset-0 bg-white/10 transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
+                orderType === k ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+              }`}
+            />
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-white transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
+                orderType === k ? "opacity-100" : "opacity-0"
+              }`}
+            />
+            <span
+              className={`relative font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white ${TRIM}`}
             >
-              {/* Selected tab: 10% fill and a 2px stroke outside the bottom edge.
-                  Hovering an unselected tab shows the fill at half opacity,
-                  with no stroke. */}
-              <span
-                aria-hidden
-                className={`pointer-events-none absolute inset-0 bg-white/10 transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
-                  orderType === k ? "opacity-100" : "opacity-0 group-hover:opacity-50"
-                }`}
-              />
-              <span
-                aria-hidden
-                className={`pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-white transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
-                  orderType === k ? "opacity-100" : "opacity-0"
-                }`}
-              />
-              <span
-                className={`relative font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white ${TRIM}`}
-              >
-                {label}
-              </span>
-            </button>
-          ))}
-        </div>
+              {label}
+            </span>
+          </button>
+        ))}
       </div>
 
       <div
         ref={flipRoot}
         // Side padding sits inside the scroller: a vertical scroller also clips
         // sideways, and the slider knob overhangs the content edge at max.
-        // pt-[94px] = header height (58px) + 36px gap, so at rest the form
-        // starts below the header; when scrolled it slides under the header.
-        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto px-[10px] pt-[94px] pb-[27px]"
+        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto px-[10px] pt-9 pb-[27px]"
       >
         <div className="flex flex-col gap-9">
           <SideSwitch isLong={isLong} onChange={setIsLong} />
