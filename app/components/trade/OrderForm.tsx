@@ -116,11 +116,13 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
 
   return (
     <div
-      className={`relative flex h-full min-h-0 flex-col bg-black/[0.82] px-[18px] py-2.5 backdrop-blur-[40.95px] ${STROKE_7}`}
+      className={`relative flex h-full min-h-0 flex-col bg-black/[0.82] py-2.5 backdrop-blur-[40.95px] ${STROKE_7}`}
     >
       <div
         ref={flipRoot}
-        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto pb-[27px]"
+        // Side padding sits inside the scroller: a vertical scroller also clips
+        // sideways, and the slider knob overhangs the content edge at max.
+        className="no-scrollbar relative flex min-h-0 flex-1 flex-col gap-[23px] overflow-y-auto px-[18px] pb-[27px]"
       >
         <div className="flex flex-col gap-9">
           <div className="flex h-[38px] shrink-0">
@@ -133,15 +135,20 @@ export function OrderForm({ desk }: { desk: TradeDeskState }) {
                 className="group relative flex flex-1 items-center justify-center px-5 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/35"
               >
                 {/* Selected tab: 10% fill and a 2px stroke outside the bottom edge.
-                    Hovering an unselected tab shows the same at half opacity. */}
+                    Hovering an unselected tab shows the fill at half opacity,
+                    with no stroke. */}
                 <span
                   aria-hidden
                   className={`pointer-events-none absolute inset-0 bg-white/10 transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
                     orderType === k ? "opacity-100" : "opacity-0 group-hover:opacity-50"
                   }`}
-                >
-                  <span className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-white" />
-                </span>
+                />
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-white transition-opacity duration-200 ease-[cubic-bezier(0,0,0.58,1)] motion-reduce:transition-none ${
+                    orderType === k ? "opacity-100" : "opacity-0"
+                  }`}
+                />
                 <span
                   className={`relative font-display text-[11px] font-semibold uppercase tracking-[0.88px] text-white ${TRIM}`}
                 >
