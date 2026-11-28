@@ -89,10 +89,6 @@ export function MarketTicker({ marketKey, onSelect, leverage }: Props) {
             }
             tone={fundingUp === true ? "up" : fundingUp === false ? "down" : undefined}
           />
-          <div className="trade-ticker-status ml-auto">
-            <span className="trade-ticker-dot" />
-            Private settlement
-          </div>
         </div>
       </div>
     </div>

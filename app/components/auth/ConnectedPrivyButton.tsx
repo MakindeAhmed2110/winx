@@ -92,7 +92,6 @@ export default function ConnectedPrivyButton() {
   }
 
   const wrong = chainId != null && chainId !== robinhoodTestnet.id;
-  const kind = !display ? "" : direct ? "Direct" : "Embedded";
   const short = display
     ? display.startsWith("0x")
       ? `${display.slice(0, 6)}…${display.slice(-4)}`
@@ -152,18 +151,10 @@ export default function ConnectedPrivyButton() {
           disabled={busy}
           onClick={() => setMenuOpen((v) => !v)}
         >
-          <span className="winx-account-dot" aria-hidden />
-          {kind ? <span className="winx-account-kind">{kind}</span> : null}
-          <span className="mono">{short}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M6 9l6 6 6-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {/* Figma "Wallet address": the address and a 16px caret. The wallet
+              kind (direct / embedded) is shown in the menu. */}
+          <span className="winx-account-addr">{short}</span>
+          <img src="/icons/caret-down-16.svg" alt="" width={16} height={16} />
         </button>
 
         {menuOpen ? (
